@@ -104,6 +104,15 @@ let extract_diff repo_root base target path_filter out_path =
   in
   result_to_exit result
 
+let build_timeline repo_root base target path_filter out_path =
+  let result =
+    match Timeline.build ~repo_root ~base ~target ~path_filter with
+    | Error message -> Error message
+    | Ok timeline ->
+        timeline |> Json_codec.timeline_document_to_yojson |> write_or_stdout out_path
+  in
+  result_to_exit result
+
 let diff_arg =
   let doc = "Read a saved git diff JSON document from $(docv)." in
   Arg.(required & opt (some file) None & info [ "diff" ] ~docv:"PATH" ~doc)
@@ -173,6 +182,17 @@ let build_scene_cmd =
   Cmd.v info
     Term.(ret (const build_scene $ diff_arg $ optional_semantic_arg $ out_arg))
 
+let build_timeline_cmd =
+  let doc =
+    "Build renderer-ready timeline scenes for adjacent commits between two revisions."
+  in
+  let info = Cmd.info "build-timeline" ~doc in
+  Cmd.v info
+    Term.(
+      ret
+        (const build_timeline $ repo_arg $ base_arg $ target_arg $ path_filter_arg
+       $ out_arg))
+
 let default_cmd =
   let doc = "Typed OCaml backend for git diff visualization documents." in
   let info = Cmd.info "git-visualization-diff" ~version:"0.1.0" ~doc in
@@ -181,6 +201,7 @@ let default_cmd =
       build_hierarchy_cmd;
       build_semantic_hierarchy_cmd;
       build_scene_cmd;
+      build_timeline_cmd;
       extract_diff_cmd;
       extract_semantics_cmd;
     ]

@@ -118,5 +118,15 @@ For a local git repository, the scripted path is:
 scripts/render-repo-diffs.sh --repo /path/to/repo
 ```
 
+To render every adjacent commit transition between two revisions with a timeline
+slider:
+
+```bash
+scripts/render-repo-diffs.sh --repo /path/to/repo --base HEAD~3 --target HEAD --timeline
+```
+
+Timeline mode shows tick marks for each commit step, 8-character target commit
+hashes, and endpoint commit dates next to the right-side slider.
+
 On this machine, use `opam exec -- dune ...` so dune resolves to the opam
 switch version rather than the older Homebrew binary.

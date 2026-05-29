@@ -6,11 +6,19 @@ const summaryEl = document.getElementById("summary");
 const resetButton = document.getElementById("resetButton");
 const upButton = document.getElementById("upButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
+const timelinePanel = document.getElementById("timelinePanel");
+const timelineSlider = document.getElementById("timelineSlider");
+const timelineTicks = document.getElementById("timelineTicks");
+const timelineLabel = document.getElementById("timelineLabel");
+const timelineEndDateTop = document.getElementById("timelineEndDateTop");
+const timelineEndDateBottom = document.getElementById("timelineEndDateBottom");
 
 const svgNS = "http://www.w3.org/2000/svg";
 const rootNodeId = "repo";
 
 let sceneDocument;
+let timelineDocument = null;
+let timelineStepIndex = 0;
 let currentRootId = rootNodeId;
 let selectedId = null;
 
@@ -556,6 +564,7 @@ function renderCard(node, x, y, width, height, zoomOnClick = true) {
 }
 
 function renderScene() {
+  svg.style.opacity = "1";
   svg.innerHTML = "";
   const root = nodeById(currentRootId);
   const visible = childrenOf(currentRootId);
@@ -591,11 +600,114 @@ async function boot() {
   setTheme(localStorage.getItem("git-visualization-diff-theme") === "light" ? "light" : "dark");
   const response = await fetch("/scene.json");
   if (!response.ok) throw new Error(`scene request failed: ${response.status}`);
-  sceneDocument = await response.json();
+  const loadedDocument = await response.json();
+  if (loadedDocument.kind === "timeline" || Array.isArray(loadedDocument.steps)) {
+    timelineDocument = loadedDocument;
+    timelineStepIndex = 0;
+    sceneDocument = timelineDocument.steps[0]?.document;
+    setupTimelineControls();
+  } else {
+    sceneDocument = loadedDocument;
+    timelinePanel.hidden = true;
+  }
   renderLegend(sceneDocument.scene?.legend ?? []);
   currentRootId = nodeById(rootNodeId) ? rootNodeId : sceneDocument.scene.nodes[0]?.id;
   updateSelection(nodeById(currentRootId));
   renderScene();
+}
+
+function setupTimelineControls() {
+  const steps = timelineDocument.steps ?? [];
+  timelinePanel.hidden = steps.length <= 1;
+  timelineSlider.min = "0";
+  timelineSlider.max = String(Math.max(0, steps.length - 1));
+  timelineSlider.value = String(timelineStepIndex);
+  renderTimelineTicks();
+  updateTimelineLabel();
+}
+
+function updateTimelineLabel() {
+  const step = timelineDocument?.steps?.[timelineStepIndex];
+  if (!step) {
+    timelineLabel.textContent = "";
+    return;
+  }
+  const hash = step.targetShortHash ?? shortHash(step.target);
+  const date = formatTimelineDate(step.targetDate);
+  timelineLabel.textContent = `${timelineStepIndex + 1}/${timelineDocument.steps.length}\n${hash}\n${date}`;
+}
+
+function shortHash(commit) {
+  if (!commit) return "";
+  return commit.length <= 8 ? commit : commit.slice(0, 8);
+}
+
+function formatTimelineDate(dateText) {
+  if (!dateText) return "";
+  const parsed = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return dateText;
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function renderTimelineTicks() {
+  const steps = timelineDocument?.steps ?? [];
+  timelineTicks.innerHTML = "";
+  if (steps.length === 0) {
+    timelineEndDateTop.textContent = "";
+    timelineEndDateBottom.textContent = "";
+    return;
+  }
+  timelineEndDateTop.textContent = formatTimelineDate(steps[steps.length - 1]?.targetDate);
+  timelineEndDateBottom.textContent = formatTimelineDate(steps[0]?.targetDate);
+
+  steps.forEach((step, index) => {
+    const position = steps.length === 1 ? 50 : 100 - (index / (steps.length - 1)) * 100;
+    const tick = document.createElement("button");
+    tick.type = "button";
+    tick.className = `timeline-tick${index === timelineStepIndex ? " active" : ""}`;
+    tick.style.top = `${position}%`;
+    tick.title = `${step.label}${step.targetDate ? ` (${formatTimelineDate(step.targetDate)})` : ""}`;
+    tick.addEventListener("click", () => showTimelineStep(index));
+
+    const mark = document.createElement("span");
+    mark.className = "timeline-tick-mark";
+    tick.appendChild(mark);
+
+    const hash = document.createElement("span");
+    hash.className = "timeline-tick-hash";
+    hash.textContent = step.targetShortHash ?? shortHash(step.target);
+    tick.appendChild(hash);
+
+    timelineTicks.appendChild(tick);
+  });
+}
+
+function showTimelineStep(index) {
+  if (!timelineDocument) return;
+  const step = timelineDocument.steps[index];
+  if (!step) return;
+  timelineStepIndex = index;
+  timelineSlider.value = String(index);
+  svg.style.transition = "opacity 160ms ease";
+  svg.style.opacity = "0.18";
+  window.setTimeout(() => {
+    sceneDocument = step.document;
+    currentRootId = nodeById(currentRootId) ? currentRootId : rootNodeId;
+    selectedId = nodeById(selectedId) ? selectedId : currentRootId;
+    renderLegend(sceneDocument.scene?.legend ?? []);
+    updateSelection(nodeById(selectedId));
+    renderTimelineTicks();
+    updateTimelineLabel();
+    renderScene();
+    requestAnimationFrame(() => {
+      svg.style.transition = "opacity 180ms ease";
+      svg.style.opacity = "1";
+    });
+  }, 150);
 }
 
 resetButton.addEventListener("click", () => goToNode(rootNodeId));
@@ -604,6 +716,10 @@ themeToggleButton.addEventListener("click", () => {
   setTheme(currentTheme() === "light" ? "dark" : "light");
   renderLegend(sceneDocument.scene?.legend ?? []);
   renderScene();
+});
+
+timelineSlider.addEventListener("input", () => {
+  showTimelineStep(Number(timelineSlider.value));
 });
 
 boot().catch((error) => {

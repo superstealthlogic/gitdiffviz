@@ -460,6 +460,7 @@ Current status:
 - `viewer/index.html`, `viewer/styles.css`, and `viewer/app.js` load OCaml scene JSON from `/scene.json`.
 - `viewer/serve-preview.mjs` serves the static viewer and a selected scene file.
 - The viewer keeps the original zoom/card/file-diff flow and uses Highlight.js for diff-row syntax highlighting when available, with a lightweight fallback highlighter.
+- `build-timeline` emits adjacent-commit scene steps between two revisions, and the viewer shows a right-side slider with tick marks, 8-character hashes, endpoint dates, and a dissolve transition between steps.
 
 Medium-term:
 

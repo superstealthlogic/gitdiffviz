@@ -12,6 +12,7 @@ Options:
   --target REV     Target git revision. Default: HEAD
   --workdir PATH   Output workspace. Default: /tmp/gvd-render-repo-diffs
   --port PORT      Viewer port. Default: 4173
+  --timeline       Build and serve adjacent-commit timeline JSON.
   --no-serve       Build JSON artifacts but do not start the viewer.
   --help           Show this help.
 
@@ -25,6 +26,7 @@ target="HEAD"
 workdir="/tmp/gvd-render-repo-diffs"
 port="4173"
 serve="1"
+timeline="0"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
     --port)
       port="${2:-}"
       shift 2
+      ;;
+    --timeline)
+      timeline="1"
+      shift
       ;;
     --no-serve)
       serve="0"
@@ -81,6 +87,7 @@ diff_json="$workdir/diff.json"
 semantic_files="$workdir/semantic-files.txt"
 semantics_json="$workdir/semantics.json"
 scene_json="$workdir/scene.json"
+timeline_json="$workdir/timeline.json"
 file_level_scene_json="$workdir/scene-file-level.json"
 
 echo "Repository: $repo"
@@ -141,6 +148,18 @@ opam exec -- dune exec git-visualization-diff -- build-scene \
   --diff "$diff_json" \
   --out "$file_level_scene_json"
 
+serve_json="$scene_json"
+if [[ "$timeline" == "1" ]]; then
+  echo
+  echo "Building timeline scene sequence..."
+  opam exec -- dune exec git-visualization-diff -- build-timeline \
+    --repo "$repo" \
+    --base "$base" \
+    --target "$target" \
+    --out "$timeline_json"
+  serve_json="$timeline_json"
+fi
+
 cat > "$workdir/open-dark-viewer.html" <<EOF
 <!doctype html>
 <meta charset="utf-8">
@@ -157,6 +176,9 @@ if [[ -n "$semantics_json" ]]; then
   echo "  $semantics_json"
 fi
 echo "  $scene_json"
+if [[ "$timeline" == "1" ]]; then
+  echo "  $timeline_json"
+fi
 echo "  $file_level_scene_json"
 echo "  $semantic_files"
 
@@ -164,9 +186,9 @@ if [[ "$serve" == "1" ]]; then
   echo
   echo "Starting dark-mode viewer at http://127.0.0.1:$port"
   echo "If your browser previously used light mode, open $workdir/open-dark-viewer.html once or toggle back to dark."
-  exec node viewer/serve-preview.mjs --scene "$scene_json" --port "$port"
+  exec node viewer/serve-preview.mjs --scene "$serve_json" --port "$port"
 fi
 
 echo
 echo "Viewer not started. Start it with:"
-echo "  node viewer/serve-preview.mjs --scene $scene_json --port $port"
+echo "  node viewer/serve-preview.mjs --scene $serve_json --port $port"

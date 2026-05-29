@@ -38,6 +38,16 @@
       <section class="canvas-panel">
         <svg id="scene" viewBox="0 0 1200 800" role="img" aria-label="Git visualization diff scene"></svg>
       </section>
+      <aside id="timelinePanel" class="timeline-panel" hidden>
+        <h2>Timeline</h2>
+        <div id="timelineEndDateTop" class="timeline-date"></div>
+        <div class="timeline-track-wrap">
+          <input id="timelineSlider" type="range" min="0" max="0" value="0" orient="vertical" />
+          <div id="timelineTicks" class="timeline-ticks"></div>
+        </div>
+        <div id="timelineEndDateBottom" class="timeline-date"></div>
+        <div id="timelineLabel" class="timeline-label"></div>
+      </aside>
     </main>
 
     <script type="module" src="/viewer/app.js"></script>

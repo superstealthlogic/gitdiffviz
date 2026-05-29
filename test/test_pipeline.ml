@@ -516,6 +516,34 @@ let test_extract_git_diff_smoke () =
       Alcotest.(check bool) "has lib.rs" true
         (List.exists (fun file -> String.equal file.Diff_types.path "lib.rs") diff.files)
 
+let test_build_timeline_smoke () =
+  let dir =
+    Filename.concat (Filename.get_temp_dir_name ())
+      ("gvd-timeline-test-" ^ string_of_int (Unix.getpid ()))
+  in
+  Unix.mkdir dir 0o700;
+  run dir [ "init" ];
+  run dir [ "config"; "user.email"; "test@example.invalid" ];
+  run dir [ "config"; "user.name"; "Git Visualization Diff Test" ];
+  write_file (Filename.concat dir "lib.rs") "pub fn value() -> i32 {\n  1\n}\n";
+  run dir [ "add"; "lib.rs" ];
+  run dir [ "commit"; "-m"; "base" ];
+  write_file (Filename.concat dir "lib.rs") "pub fn value() -> i32 {\n  2\n}\n";
+  run dir [ "add"; "lib.rs" ];
+  run dir [ "commit"; "-m"; "middle" ];
+  write_file (Filename.concat dir "lib.rs") "pub fn value() -> i32 {\n  3\n}\n";
+  run dir [ "add"; "lib.rs" ];
+  run dir [ "commit"; "-m"; "target" ];
+  match Timeline.build ~repo_root:dir ~base:"HEAD~2" ~target:"HEAD" ~path_filter:None with
+  | Error message -> Alcotest.fail message
+  | Ok timeline ->
+      Alcotest.(check int) "timeline steps" 2
+        (List.length timeline.Scene_types.steps);
+      let first = List.hd timeline.steps in
+      Alcotest.(check int) "first step index" 0 first.index;
+      Alcotest.(check int) "first step changed files" 1
+        first.document.metrics.changed_files
+
 let test_language_detection () =
   Alcotest.(check string) "rust" "rust" (Language.detect_by_path "src/lib.rs");
   Alcotest.(check string) "cpp" "cpp" (Language.detect_by_path "src/widget.cpp");
@@ -759,6 +787,8 @@ let () =
           Alcotest.test_case "parse raw outputs" `Quick test_parse_raw_git_outputs;
           Alcotest.test_case "extract from temporary repo" `Quick
             test_extract_git_diff_smoke;
+          Alcotest.test_case "build timeline from temporary repo" `Quick
+            test_build_timeline_smoke;
         ] );
       ( "adapters",
         [

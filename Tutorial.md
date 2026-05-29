@@ -49,6 +49,19 @@ The script writes:
 It starts the viewer on `http://127.0.0.1:4173` unless `--no-serve` is passed.
 The viewer defaults to dark mode; if your browser has a previous light-mode preference saved, use the theme toggle or open `/tmp/gvd-render-repo-diffs/open-dark-viewer.html` once.
 
+To render a commit-by-commit timeline between two revisions, add `--timeline`:
+
+```bash
+scripts/render-repo-diffs.sh \
+  --repo /Users/jcarlson/Projects/sentry-cocoa \
+  --base HEAD~3 \
+  --target HEAD \
+  --timeline
+```
+
+This writes `/tmp/gvd-render-repo-diffs/timeline.json` and shows a right-side slider in the viewer. Each slider position represents the diff from one commit to the next.
+The slider includes tick marks, 8-character target commit hashes, and endpoint dates.
+
 ## 2. Choose Revisions
 
 For a first render, point `REPO` at the checkout you want to inspect and compare the current checkout to its parent:
@@ -130,6 +143,16 @@ If you want a file-level scene without semantic symbols:
 opam exec -- dune exec git-visualization-diff -- build-scene \
   --diff /tmp/gvd-render-repo-diffs/diff.json \
   --out /tmp/gvd-render-repo-diffs/scene-file-level.json
+```
+
+Build a timeline scene sequence without semantic symbols:
+
+```bash
+opam exec -- dune exec git-visualization-diff -- build-timeline \
+  --repo "$REPO" \
+  --base "$BASE" \
+  --target "$TARGET" \
+  --out /tmp/gvd-render-repo-diffs/timeline.json
 ```
 
 ## 7. Preview the Scene

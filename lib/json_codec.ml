@@ -83,7 +83,7 @@ let revision_comparison_of_yojson json =
   let* target = required_string "target" json in
   Ok { base; target }
 
-let revision_comparison_to_yojson comparison =
+let revision_comparison_to_yojson (comparison : revision_comparison) =
   `Assoc [ ("base", `String comparison.base); ("target", `String comparison.target) ]
 
 let source_span_of_yojson json =
@@ -542,7 +542,7 @@ let visualization_metrics_to_yojson metrics =
       ("totalRemovedLines", `Int metrics.total_removed_lines);
     ]
 
-let visualization_document_to_yojson document =
+let visualization_document_to_yojson (document : visualization_document) =
   `Assoc
     [
       ("version", `Int document.version);
@@ -550,6 +550,30 @@ let visualization_document_to_yojson document =
       ("comparison", revision_comparison_to_yojson document.comparison);
       ("scene", visualization_scene_to_yojson document.scene);
       ("metrics", visualization_metrics_to_yojson document.metrics);
+    ]
+
+let timeline_step_to_yojson (step : timeline_step) =
+  `Assoc
+    ([
+       ("index", `Int step.index);
+       ("base", `String step.base);
+       ("target", `String step.target);
+       ("label", `String step.label);
+       ("document", visualization_document_to_yojson step.document);
+     ]
+    @ option_field "targetDate" (fun value -> `String value) step.target_date
+    @ option_field "targetShortHash" (fun value -> `String value)
+        step.target_short_hash)
+
+let timeline_document_to_yojson (document : timeline_document) =
+  `Assoc
+    [
+      ("kind", `String "timeline");
+      ("version", `Int document.version);
+      ("repoRoot", `String document.repo_root);
+      ("base", `String document.base);
+      ("target", `String document.target);
+      ("steps", `List (List.map timeline_step_to_yojson document.steps));
     ]
 
 let read_json_file path =

@@ -94,6 +94,24 @@ type visualization_document = {
   metrics : visualization_metrics;
 }
 
+type timeline_step = {
+  index : int;
+  base : string;
+  target : string;
+  label : string;
+  target_date : string option;
+  target_short_hash : string option;
+  document : visualization_document;
+}
+
+type timeline_document = {
+  version : int;
+  repo_root : string;
+  base : string;
+  target : string;
+  steps : timeline_step list;
+}
+
 let visualization_node_kind_to_string = function
   | Scene_repository -> "repository"
   | Scene_directory -> "directory"

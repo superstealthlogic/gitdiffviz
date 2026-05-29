@@ -21,5 +21,7 @@ val semantic_hierarchy_document_to_yojson :
 
 val visualization_document_to_yojson : visualization_document -> Yojson.Safe.t
 
+val timeline_document_to_yojson : timeline_document -> Yojson.Safe.t
+
 val read_json_file : string -> (Yojson.Safe.t, string) result
 val write_json_file : string -> Yojson.Safe.t -> (unit, string) result
