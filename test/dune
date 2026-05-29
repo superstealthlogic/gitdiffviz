@@ -1,0 +1,6 @@
+(test
+ (name test_pipeline)
+ (libraries git_visualization_diff alcotest yojson unix)
+ (deps
+  (source_tree ../examples)
+  (source_tree fixtures)))

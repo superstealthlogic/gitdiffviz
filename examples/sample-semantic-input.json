@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "repoRoot": "/demo/repo",
+  "files": [
+    {
+      "path": "src/data.rs",
+      "language": "rust",
+      "symbols": [
+        {
+          "id": "DataFactory",
+          "kind": "type_container",
+          "name": "DataFactory",
+          "span": {
+            "startLine": 1,
+            "endLine": 18
+          },
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented"]
+        },
+        {
+          "id": "build_factory",
+          "kind": "function",
+          "name": "build_factory",
+          "span": {
+            "startLine": 20,
+            "endLine": 48
+          },
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented"],
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "path": "src/new_module.rs",
+      "language": "rust",
+      "symbols": [
+        {
+          "id": "bootstrap",
+          "kind": "function",
+          "name": "bootstrap",
+          "span": {
+            "startLine": 1,
+            "endLine": 8
+          },
+          "paradigms": ["imperative"]
+        }
+      ]
+    }
+  ]
+}

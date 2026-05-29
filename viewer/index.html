@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Git Visualization Diff</title>
+    <link rel="stylesheet" href="/viewer/styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Git Visualization Diff</h1>
+        <p id="summary">Loading scene...</p>
+      </div>
+      <div class="controls">
+        <button id="upButton" type="button" title="Go to parent">Up</button>
+        <button id="resetButton" type="button" title="Return to repository root">Reset</button>
+        <button id="themeToggleButton" type="button" title="Toggle theme">Light</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section>
+          <h2>Legend</h2>
+          <div id="legend"></div>
+        </section>
+        <section>
+          <h2>Zoom</h2>
+          <div id="zoomSummary" class="zoom-summary">Loading summary...</div>
+        </section>
+        <section>
+          <h2>Selection</h2>
+          <div id="selection" class="selection">Nothing selected.</div>
+        </section>
+      </aside>
+      <section class="canvas-panel">
+        <svg id="scene" viewBox="0 0 1200 800" role="img" aria-label="Git visualization diff scene"></svg>
+      </section>
+    </main>
+
+    <script type="module" src="/viewer/app.js"></script>
+  </body>
+</html>

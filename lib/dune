@@ -1,0 +1,21 @@
+(library
+ (name git_visualization_diff)
+ (public_name git_visualization_diff)
+ (libraries yojson unix tree-sitter.bindings tree-sitter.run)
+ (foreign_stubs
+  (language c)
+  (names
+   rust_tree_sitter_bindings
+   rust_parser
+   rust_scanner
+   cpp_tree_sitter_bindings
+   cpp_parser
+   cpp_scanner
+   swift_tree_sitter_bindings
+   swift_parser
+   swift_scanner)
+  (flags
+   -std=c99
+   -fPIC
+   -I %{env:TREESITTER_INCDIR=/usr/local/include}
+   -I %{env:GVD_INCDIR=/Users/jcarlson/Projects/GitVisualizationDiff/lib})))

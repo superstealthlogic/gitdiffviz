@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "repoRoot": "/demo/repo",
+  "comparison": {
+    "base": "HEAD~1",
+    "target": "HEAD"
+  },
+  "files": [
+    {
+      "path": "src/data.rs",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 4,
+      "isBinary": false,
+      "hunks": [
+        {
+          "oldRange": {
+            "startLine": 20,
+            "lineCount": 2
+          },
+          "newRange": {
+            "startLine": 20,
+            "lineCount": 8
+          },
+          "header": "@@ -20,2 +20,8 @@"
+        },
+        {
+          "oldRange": {
+            "startLine": 45,
+            "lineCount": 2
+          },
+          "newRange": {
+            "startLine": 51,
+            "lineCount": 0
+          },
+          "header": "@@ -45,2 +51,0 @@"
+        }
+      ]
+    },
+    {
+      "path": "src/new_module.rs",
+      "status": "added",
+      "additions": 8,
+      "deletions": 0,
+      "isBinary": false,
+      "hunks": [
+        {
+          "oldRange": {
+            "startLine": 0,
+            "lineCount": 0
+          },
+          "newRange": {
+            "startLine": 1,
+            "lineCount": 8
+          },
+          "header": "@@ -0,0 +1,8 @@"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "changedFiles": 2,
+    "totalAdditions": 18,
+    "totalDeletions": 4
+  }
+}

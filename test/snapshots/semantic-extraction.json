@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "repoRoot": "test/fixtures",
+  "files": [
+    {
+      "path": "sample.rs",
+      "language": "rust",
+      "symbols": [
+        {
+          "id": "sample.rs::struct::Widget@1",
+          "kind": "type_container",
+          "name": "Widget",
+          "span": { "startLine": 1, "endLine": 3 },
+          "languageKind": "struct"
+        },
+        {
+          "id": "sample.rs::struct::Store@5",
+          "kind": "type_container",
+          "name": "Store",
+          "span": { "startLine": 5, "endLine": 7 },
+          "languageKind": "struct",
+          "patterns": [ "generic" ],
+          "paradigms": [ "generic" ]
+        },
+        {
+          "id": "sample.rs::enum::Mode@9",
+          "kind": "type_container",
+          "name": "Mode",
+          "span": { "startLine": 9, "endLine": 12 },
+          "languageKind": "enum"
+        },
+        {
+          "id": "sample.rs::impl::impl Widget@14",
+          "kind": "type_container",
+          "name": "impl Widget",
+          "span": { "startLine": 14, "endLine": 18 },
+          "languageKind": "impl"
+        },
+        {
+          "id": "sample.rs::method::new@15",
+          "kind": "function",
+          "name": "new",
+          "span": { "startLine": 15, "endLine": 17 },
+          "languageKind": "method",
+          "parentSymbolId": "sample.rs::impl::impl Widget@14"
+        },
+        {
+          "id": "sample.rs::function::build_widget@20",
+          "kind": "function",
+          "name": "build_widget",
+          "span": { "startLine": 20, "endLine": 22 },
+          "languageKind": "function"
+        },
+        {
+          "id": "sample.rs::test_module::tests@25",
+          "kind": "type_container",
+          "name": "tests",
+          "span": { "startLine": 25, "endLine": 33 },
+          "languageKind": "test_module",
+          "patterns": [ "test" ],
+          "paradigms": [ "test" ]
+        },
+        {
+          "id": "sample.rs::test_function::builds_widget@29",
+          "kind": "function",
+          "name": "builds_widget",
+          "span": { "startLine": 29, "endLine": 32 },
+          "languageKind": "test_function",
+          "parentSymbolId": "sample.rs::test_module::tests@25",
+          "patterns": [ "test" ],
+          "paradigms": [ "test" ]
+        }
+      ]
+    },
+    {
+      "path": "sample.cpp",
+      "language": "cpp",
+      "symbols": [
+        {
+          "id": "sample.cpp::namespace::demo@1",
+          "kind": "type_container",
+          "name": "demo",
+          "span": { "startLine": 1, "endLine": 36 },
+          "languageKind": "namespace"
+        },
+        {
+          "id": "sample.cpp::enum::Mode@3",
+          "kind": "type_container",
+          "name": "Mode",
+          "span": { "startLine": 3, "endLine": 6 },
+          "languageKind": "enum",
+          "parentSymbolId": "sample.cpp::namespace::demo@1"
+        },
+        {
+          "id": "sample.cpp::class::Widget@8",
+          "kind": "type_container",
+          "name": "Widget",
+          "span": { "startLine": 8, "endLine": 13 },
+          "languageKind": "class",
+          "parentSymbolId": "sample.cpp::namespace::demo@1"
+        },
+        {
+          "id": "sample.cpp::method::value@10",
+          "kind": "function",
+          "name": "value",
+          "span": { "startLine": 10, "endLine": 12 },
+          "languageKind": "method",
+          "parentSymbolId": "sample.cpp::class::Widget@8"
+        },
+        {
+          "id": "sample.cpp::class::Box@15",
+          "kind": "type_container",
+          "name": "Box",
+          "span": { "startLine": 15, "endLine": 24 },
+          "languageKind": "class",
+          "parentSymbolId": "sample.cpp::namespace::demo@1",
+          "patterns": [ "template", "generic" ],
+          "paradigms": [ "generic" ]
+        },
+        {
+          "id": "sample.cpp::method::value@18",
+          "kind": "function",
+          "name": "value",
+          "span": { "startLine": 18, "endLine": 20 },
+          "languageKind": "method",
+          "parentSymbolId": "sample.cpp::class::Box@15"
+        },
+        {
+          "id": "sample.cpp::function::identity@26",
+          "kind": "function",
+          "name": "identity",
+          "span": { "startLine": 26, "endLine": 29 },
+          "languageKind": "function",
+          "parentSymbolId": "sample.cpp::namespace::demo@1",
+          "patterns": [ "template", "generic" ],
+          "paradigms": [ "generic" ]
+        },
+        {
+          "id": "sample.cpp::function::build_widget@31",
+          "kind": "function",
+          "name": "build_widget",
+          "span": { "startLine": 31, "endLine": 34 },
+          "languageKind": "function",
+          "parentSymbolId": "sample.cpp::namespace::demo@1"
+        }
+      ]
+    },
+    {
+      "path": "Sample.swift",
+      "language": "swift",
+      "symbols": [
+        {
+          "id": "Sample.swift::protocol::Displayable@1",
+          "kind": "type_container",
+          "name": "Displayable",
+          "span": { "startLine": 1, "endLine": 3 },
+          "languageKind": "protocol"
+        },
+        {
+          "id": "Sample.swift::enum::Mode@5",
+          "kind": "type_container",
+          "name": "Mode",
+          "span": { "startLine": 5, "endLine": 8 },
+          "languageKind": "enum"
+        },
+        {
+          "id": "Sample.swift::struct::Store@10",
+          "kind": "type_container",
+          "name": "Store",
+          "span": { "startLine": 10, "endLine": 12 },
+          "languageKind": "struct",
+          "patterns": [ "generic" ],
+          "paradigms": [ "generic" ]
+        },
+        {
+          "id": "Sample.swift::property::value@11",
+          "kind": "symbol",
+          "name": "value",
+          "span": { "startLine": 11, "endLine": 11 },
+          "languageKind": "property",
+          "parentSymbolId": "Sample.swift::struct::Store@10"
+        },
+        {
+          "id": "Sample.swift::struct::Widget@14",
+          "kind": "type_container",
+          "name": "Widget",
+          "span": { "startLine": 14, "endLine": 24 },
+          "languageKind": "struct"
+        },
+        {
+          "id": "Sample.swift::property::value@15",
+          "kind": "symbol",
+          "name": "value",
+          "span": { "startLine": 15, "endLine": 15 },
+          "languageKind": "property",
+          "parentSymbolId": "Sample.swift::struct::Widget@14"
+        },
+        {
+          "id": "Sample.swift::initializer::init@17",
+          "kind": "function",
+          "name": "init",
+          "span": { "startLine": 17, "endLine": 19 },
+          "languageKind": "initializer",
+          "parentSymbolId": "Sample.swift::struct::Widget@14"
+        },
+        {
+          "id": "Sample.swift::method::display@21",
+          "kind": "function",
+          "name": "display",
+          "span": { "startLine": 21, "endLine": 23 },
+          "languageKind": "method",
+          "parentSymbolId": "Sample.swift::struct::Widget@14"
+        },
+        {
+          "id": "Sample.swift::class::Controller@26",
+          "kind": "type_container",
+          "name": "Controller",
+          "span": { "startLine": 26, "endLine": 32 },
+          "languageKind": "class"
+        },
+        {
+          "id": "Sample.swift::property::title@27",
+          "kind": "symbol",
+          "name": "title",
+          "span": { "startLine": 27, "endLine": 27 },
+          "languageKind": "property",
+          "parentSymbolId": "Sample.swift::class::Controller@26"
+        },
+        {
+          "id": "Sample.swift::method::render@29",
+          "kind": "function",
+          "name": "render",
+          "span": { "startLine": 29, "endLine": 31 },
+          "languageKind": "method",
+          "parentSymbolId": "Sample.swift::class::Controller@26"
+        },
+        {
+          "id": "Sample.swift::extension::Widget@34",
+          "kind": "type_container",
+          "name": "Widget",
+          "span": { "startLine": 34, "endLine": 38 },
+          "languageKind": "extension"
+        },
+        {
+          "id": "Sample.swift::method::mode@35",
+          "kind": "function",
+          "name": "mode",
+          "span": { "startLine": 35, "endLine": 37 },
+          "languageKind": "method",
+          "parentSymbolId": "Sample.swift::extension::Widget@34"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "repoRoot": "/demo/repo",
+  "comparison": {
+    "base": "HEAD~1",
+    "target": "HEAD"
+  },
+  "nodes": [
+    {
+      "id": "repo",
+      "kind": "repository",
+      "name": "repo",
+      "path": "",
+      "children": ["dir:src"],
+      "depth": 0,
+      "lineCount": 128,
+      "diff": {
+        "linesAdded": 18,
+        "linesRemoved": 4,
+        "changedRatio": 0.171875
+      },
+      "semantic": {
+        "patterns": ["factory"],
+        "paradigms": ["object_oriented", "imperative"],
+        "issues": ["complexity_warning"],
+        "severity": "warning"
+      }
+    },
+    {
+      "id": "dir:src",
+      "kind": "directory",
+      "name": "src",
+      "path": "src",
+      "parentId": "repo",
+      "children": ["file:src/data.rs", "file:src/new_module.rs"],
+      "depth": 1,
+      "lineCount": 128,
+      "diff": {
+        "linesAdded": 18,
+        "linesRemoved": 4,
+        "changedRatio": 0.171875
+      },
+      "semantic": {
+        "patterns": ["factory"],
+        "paradigms": ["object_oriented", "imperative"],
+        "issues": ["complexity_warning"],
+        "severity": "warning"
+      }
+    },
+    {
+      "id": "file:src/data.rs",
+      "kind": "file",
+      "name": "data.rs",
+      "path": "src/data.rs",
+      "parentId": "dir:src",
+      "children": [
+        "symbol:src/data.rs:DataFactory",
+        "symbol:src/data.rs:build_factory"
+      ],
+      "depth": 2,
+      "lineCount": 120,
+      "language": "rust",
+      "status": "modified",
+      "diff": {
+        "linesAdded": 10,
+        "linesRemoved": 4,
+        "changedRatio": 0.11666666666666667
+      },
+      "semantic": {
+        "patterns": ["factory"],
+        "paradigms": ["object_oriented"],
+        "issues": ["complexity_warning"],
+        "severity": "warning"
+      }
+    },
+    {
+      "id": "symbol:src/data.rs:DataFactory",
+      "kind": "type_container",
+      "name": "DataFactory",
+      "path": "src/data.rs",
+      "parentId": "file:src/data.rs",
+      "children": [],
+      "depth": 3,
+      "lineCount": 18,
+      "language": "rust",
+      "span": {
+        "startLine": 1,
+        "endLine": 18
+      },
+      "diff": {
+        "linesAdded": 0,
+        "linesRemoved": 0,
+        "changedRatio": 0
+      },
+      "semantic": {
+        "patterns": ["factory"],
+        "paradigms": ["object_oriented"]
+      },
+      "sourceSymbolId": "DataFactory"
+    },
+    {
+      "id": "symbol:src/data.rs:build_factory",
+      "kind": "function",
+      "name": "build_factory",
+      "path": "src/data.rs",
+      "parentId": "file:src/data.rs",
+      "children": [],
+      "depth": 3,
+      "lineCount": 29,
+      "language": "rust",
+      "span": {
+        "startLine": 20,
+        "endLine": 48
+      },
+      "diff": {
+        "linesAdded": 8,
+        "linesRemoved": 8,
+        "changedRatio": 0.5517241379310345
+      },
+      "semantic": {
+        "patterns": ["factory"],
+        "paradigms": ["object_oriented"],
+        "issues": ["complexity_warning"],
+        "severity": "warning"
+      },
+      "sourceSymbolId": "build_factory"
+    },
+    {
+      "id": "file:src/new_module.rs",
+      "kind": "file",
+      "name": "new_module.rs",
+      "path": "src/new_module.rs",
+      "parentId": "dir:src",
+      "children": ["symbol:src/new_module.rs:bootstrap"],
+      "depth": 2,
+      "lineCount": 8,
+      "language": "rust",
+      "status": "added",
+      "diff": {
+        "linesAdded": 8,
+        "linesRemoved": 0,
+        "changedRatio": 1
+      },
+      "semantic": {
+        "paradigms": ["imperative"]
+      }
+    },
+    {
+      "id": "symbol:src/new_module.rs:bootstrap",
+      "kind": "function",
+      "name": "bootstrap",
+      "path": "src/new_module.rs",
+      "parentId": "file:src/new_module.rs",
+      "children": [],
+      "depth": 3,
+      "lineCount": 8,
+      "language": "rust",
+      "span": {
+        "startLine": 1,
+        "endLine": 8
+      },
+      "diff": {
+        "linesAdded": 8,
+        "linesRemoved": 0,
+        "changedRatio": 1
+      },
+      "semantic": {
+        "paradigms": ["imperative"]
+      },
+      "sourceSymbolId": "bootstrap"
+    }
+  ],
+  "rootNodeId": "repo",
+  "metrics": {
+    "totalNodes": 7,
+    "totalFiles": 2,
+    "symbolNodes": 3,
+    "changedFiles": 2,
+    "totalAddedLines": 18,
+    "totalRemovedLines": 4
+  }
+}

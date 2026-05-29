@@ -1,0 +1,4 @@
+(executable
+ (public_name git-visualization-diff)
+ (name main)
+ (libraries git_visualization_diff cmdliner yojson))

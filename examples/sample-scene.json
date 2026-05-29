@@ -1,0 +1,279 @@
+{
+  "version": 1,
+  "repoRoot": "/demo/repo",
+  "comparison": {
+    "base": "HEAD~1",
+    "target": "HEAD"
+  },
+  "scene": {
+    "nodes": [
+      {
+        "id": "dir:src",
+        "kind": "directory",
+        "name": "src",
+        "parentId": "repo",
+        "path": "src",
+        "lineCount": 128,
+        "diff": {
+          "linesAdded": 18,
+          "linesRemoved": 4,
+          "changedRatio": 0.171875
+        },
+        "semantic": {
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented", "imperative"],
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        },
+        "render": {
+          "normalizedSize": 1,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444",
+          "iconKey": "factory",
+          "outlineColor": "#D97706"
+        }
+      },
+      {
+        "id": "file:src/data.rs",
+        "kind": "file",
+        "name": "data.rs",
+        "parentId": "dir:src",
+        "path": "src/data.rs",
+        "language": "rust",
+        "lineCount": 120,
+        "diff": {
+          "linesAdded": 10,
+          "linesRemoved": 4,
+          "changedRatio": 0.11666666666666667
+        },
+        "semantic": {
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented"],
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        },
+        "render": {
+          "normalizedSize": 0.9375,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444",
+          "iconKey": "factory",
+          "outlineColor": "#D97706"
+        }
+      },
+      {
+        "id": "file:src/new_module.rs",
+        "kind": "file",
+        "name": "new_module.rs",
+        "parentId": "dir:src",
+        "path": "src/new_module.rs",
+        "language": "rust",
+        "lineCount": 8,
+        "diff": {
+          "linesAdded": 8,
+          "linesRemoved": 0,
+          "changedRatio": 1
+        },
+        "semantic": {
+          "paradigms": ["imperative"]
+        },
+        "render": {
+          "normalizedSize": 0.0625,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444"
+        }
+      },
+      {
+        "id": "issue:symbol:src/data.rs:build_factory:complexity_warning",
+        "kind": "issue_marker",
+        "name": "Complexity Warning",
+        "parentId": "symbol:src/data.rs:build_factory",
+        "path": "src/data.rs",
+        "language": "rust",
+        "span": {
+          "startLine": 20,
+          "endLine": 48
+        },
+        "semantic": {
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        },
+        "render": {
+          "normalizedSize": 0.08,
+          "outlineColor": "#D97706"
+        }
+      },
+      {
+        "id": "repo",
+        "kind": "repository",
+        "name": "repo",
+        "path": "",
+        "lineCount": 128,
+        "diff": {
+          "linesAdded": 18,
+          "linesRemoved": 4,
+          "changedRatio": 0.171875
+        },
+        "semantic": {
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented", "imperative"],
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        },
+        "render": {
+          "normalizedSize": 1,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444",
+          "iconKey": "factory",
+          "outlineColor": "#D97706"
+        }
+      },
+      {
+        "id": "symbol:src/data.rs:DataFactory",
+        "kind": "type_container",
+        "name": "DataFactory",
+        "parentId": "file:src/data.rs",
+        "path": "src/data.rs",
+        "language": "rust",
+        "span": {
+          "startLine": 1,
+          "endLine": 18
+        },
+        "lineCount": 18,
+        "diff": {
+          "linesAdded": 0,
+          "linesRemoved": 0,
+          "changedRatio": 0
+        },
+        "semantic": {
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented"]
+        },
+        "render": {
+          "normalizedSize": 0.140625,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444",
+          "iconKey": "factory"
+        }
+      },
+      {
+        "id": "symbol:src/data.rs:build_factory",
+        "kind": "function",
+        "name": "build_factory",
+        "parentId": "file:src/data.rs",
+        "path": "src/data.rs",
+        "language": "rust",
+        "span": {
+          "startLine": 20,
+          "endLine": 48
+        },
+        "lineCount": 29,
+        "diff": {
+          "linesAdded": 8,
+          "linesRemoved": 8,
+          "changedRatio": 0.5517241379310345
+        },
+        "semantic": {
+          "patterns": ["factory"],
+          "paradigms": ["object_oriented"],
+          "issues": ["complexity_warning"],
+          "severity": "warning"
+        },
+        "render": {
+          "normalizedSize": 0.2265625,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444",
+          "iconKey": "factory",
+          "outlineColor": "#D97706"
+        }
+      },
+      {
+        "id": "symbol:src/new_module.rs:bootstrap",
+        "kind": "function",
+        "name": "bootstrap",
+        "parentId": "file:src/new_module.rs",
+        "path": "src/new_module.rs",
+        "language": "rust",
+        "span": {
+          "startLine": 1,
+          "endLine": 8
+        },
+        "lineCount": 8,
+        "diff": {
+          "linesAdded": 8,
+          "linesRemoved": 0,
+          "changedRatio": 1
+        },
+        "semantic": {
+          "paradigms": ["imperative"]
+        },
+        "render": {
+          "normalizedSize": 0.0625,
+          "baseColor": "#E5E7EB",
+          "additionColor": "#22C55E",
+          "deletionColor": "#EF4444"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "annotates:issue:symbol:src/data.rs:build_factory:complexity_warning->symbol:src/data.rs:build_factory", "kind": "annotates", "from": "issue:symbol:src/data.rs:build_factory:complexity_warning", "to": "symbol:src/data.rs:build_factory" },
+      { "id": "contains:dir:src->file:src/data.rs", "kind": "contains", "from": "dir:src", "to": "file:src/data.rs" },
+      { "id": "contains:dir:src->file:src/new_module.rs", "kind": "contains", "from": "dir:src", "to": "file:src/new_module.rs" },
+      { "id": "contains:file:src/data.rs->symbol:src/data.rs:DataFactory", "kind": "contains", "from": "file:src/data.rs", "to": "symbol:src/data.rs:DataFactory" },
+      { "id": "contains:file:src/data.rs->symbol:src/data.rs:build_factory", "kind": "contains", "from": "file:src/data.rs", "to": "symbol:src/data.rs:build_factory" },
+      { "id": "contains:file:src/new_module.rs->symbol:src/new_module.rs:bootstrap", "kind": "contains", "from": "file:src/new_module.rs", "to": "symbol:src/new_module.rs:bootstrap" },
+      { "id": "contains:repo->dir:src", "kind": "contains", "from": "repo", "to": "dir:src" }
+    ],
+    "assets": [
+      { "key": "factory", "type": "svg", "path": "assets/factory.svg" }
+    ],
+    "legend": [
+      { "key": "addition", "label": "Added lines", "color": "#22C55E" },
+      { "key": "deletion", "label": "Removed lines", "color": "#EF4444" },
+      { "key": "unchanged", "label": "Unchanged base", "color": "#E5E7EB" },
+      { "key": "issue-info", "label": "Info issue", "color": "#0891B2" },
+      { "key": "issue-warning", "label": "Warning issue", "color": "#D97706" },
+      { "key": "issue-error", "label": "Error issue", "color": "#DC2626" },
+      { "key": "factory", "label": "Factory pattern", "color": "#64748B", "iconKey": "factory" }
+    ]
+  },
+  "metrics": {
+    "totalFiles": 2,
+    "changedFiles": 2,
+    "totalAddedLines": 18,
+    "totalRemovedLines": 4
+  },
+  "configApplied": {
+    "patterns": {
+      "factory": { "icon": "assets/factory.svg", "color": "#64748B" },
+      "visitor": { "icon": "assets/visitor.svg", "color": "#2563EB" },
+      "recursive": { "icon": "assets/recursive.svg", "color": "#7C3AED" }
+    },
+    "paradigms": {
+      "functional": { "color": "#0F766E" },
+      "object_oriented": { "color": "#1D4ED8" },
+      "imperative": { "color": "#B45309" }
+    },
+    "diff": {
+      "addition": "#22C55E",
+      "deletion": "#EF4444",
+      "unchanged": "#E5E7EB"
+    },
+    "issues": {
+      "info": "#0891B2",
+      "warning": "#D97706",
+      "error": "#DC2626"
+    },
+    "viewer": {
+      "mode": "hierarchy",
+      "showImages": true,
+      "animationSpeed": "normal",
+      "reducedMotion": false
+    }
+  }
+}
