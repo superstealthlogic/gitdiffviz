@@ -544,6 +544,62 @@ let test_build_timeline_smoke () =
       Alcotest.(check int) "first step changed files" 1
         first.document.metrics.changed_files
 
+let scene_has_changed_symbol name document =
+  List.exists
+    (fun (node : Scene_types.scene_node) ->
+      List.mem node.kind
+        [
+          Scene_types.Scene_type_container;
+          Scene_types.Scene_function;
+          Scene_types.Scene_symbol;
+        ]
+      && String.equal node.name name
+      &&
+      match node.diff with
+      | Some diff -> diff.lines_added + diff.lines_removed > 0
+      | None -> false)
+    document.Scene_types.scene.nodes
+
+let test_build_timeline_semantic_symbols_for_rust_c_cpp () =
+  let dir =
+    Filename.concat (Filename.get_temp_dir_name ())
+      ("gvd-timeline-semantic-test-" ^ string_of_int (Unix.getpid ()))
+  in
+  Unix.mkdir dir 0o700;
+  run dir [ "init" ];
+  run dir [ "config"; "user.email"; "test@example.invalid" ];
+  run dir [ "config"; "user.name"; "Git Visualization Diff Test" ];
+  write_file (Filename.concat dir "lib.rs")
+    "pub struct Widget {\n    value: i32,\n}\n\npub fn build_widget() -> Widget {\n    Widget { value: 1 }\n}\n";
+  write_file (Filename.concat dir "widget.cpp")
+    "class Widget {\npublic:\n    int value() const {\n        return 1;\n    }\n};\n";
+  write_file (Filename.concat dir "plain.c")
+    "int c_value(void) {\n    return 1;\n}\n";
+  run dir [ "add"; "lib.rs"; "widget.cpp"; "plain.c" ];
+  run dir [ "commit"; "-m"; "base" ];
+  write_file (Filename.concat dir "lib.rs")
+    "pub struct Widget {\n    value: i32,\n}\n\npub struct Store<T> {\n    value: T,\n}\n\npub fn build_widget() -> Widget {\n    Widget { value: 2 }\n}\n\npub fn build_store() -> Store<i32> {\n    Store { value: 3 }\n}\n";
+  write_file (Filename.concat dir "widget.cpp")
+    "class Widget {\npublic:\n    int value() const {\n        return 2;\n    }\n};\n\nstruct Store {\n    int value;\n};\n\nint build_store() {\n    return Store{3}.value;\n}\n";
+  write_file (Filename.concat dir "plain.c")
+    "struct Plain {\n    int value;\n};\n\nint c_value(void) {\n    return 2;\n}\n\nint c_extra(void) {\n    return 3;\n}\n";
+  run dir [ "add"; "lib.rs"; "widget.cpp"; "plain.c" ];
+  run dir [ "commit"; "-m"; "target" ];
+  match Timeline.build ~repo_root:dir ~base:"HEAD~1" ~target:"HEAD" ~path_filter:None with
+  | Error message -> Alcotest.fail message
+  | Ok timeline ->
+      let step = List.hd timeline.Scene_types.steps in
+      Alcotest.(check bool) "rust added struct" true
+        (scene_has_changed_symbol "Store" step.document);
+      Alcotest.(check bool) "rust added function" true
+        (scene_has_changed_symbol "build_store" step.document);
+      Alcotest.(check bool) "cpp added struct" true
+        (scene_has_changed_symbol "Store" step.document);
+      Alcotest.(check bool) "cpp added function" true
+        (scene_has_changed_symbol "build_store" step.document);
+      Alcotest.(check bool) "c added function" true
+        (scene_has_changed_symbol "c_extra" step.document)
+
 let test_language_detection () =
   Alcotest.(check string) "rust" "rust" (Language.detect_by_path "src/lib.rs");
   Alcotest.(check string) "cpp" "cpp" (Language.detect_by_path "src/widget.cpp");
@@ -789,6 +845,8 @@ let () =
             test_extract_git_diff_smoke;
           Alcotest.test_case "build timeline from temporary repo" `Quick
             test_build_timeline_smoke;
+          Alcotest.test_case "build timeline semantic symbols for rust/c/cpp"
+            `Quick test_build_timeline_semantic_symbols_for_rust_c_cpp;
         ] );
       ( "adapters",
         [
