@@ -1,5 +1,10 @@
 open Scene_types
 
+let recognized_semantic_path path =
+  match Language.detect_by_path path with
+  | "c" | "cpp" | "rust" | "swift" -> true
+  | _ -> false
+
 let run_git_capture repo_root args =
   let old = Sys.getcwd () in
   Fun.protect
@@ -60,9 +65,61 @@ let pairs commits =
   in
   loop [] commits
 
-let scene_for_diff diff_document =
+let git_show_file ~repo_root ~commit ~path =
+  run_git_capture repo_root [ "show"; commit ^ ":" ^ path ]
+
+let semantic_file_at_commit ~repo_root ~commit ~path =
+  if not (recognized_semantic_path path) then Ok None
+  else
+    match git_show_file ~repo_root ~commit ~path with
+    | Error _ -> Ok None
+    | Ok source -> Parser_registry.extract_file ~repo_root ~path ~source
+
+let semantic_files_for_diff ~repo_root
+    (diff_document : Diff_types.git_diff_document) =
+  let extract_for_file (file : Diff_types.diff_file_entry) =
+    let base_path = Option.value file.old_path ~default:file.path in
+    let target_entries =
+      match file.status with
+      | Diff_types.Deleted -> Ok []
+      | _ -> (
+          match semantic_file_at_commit ~repo_root ~commit:diff_document.comparison.target
+                  ~path:file.path
+          with
+          | Error message -> Error message
+          | Ok None -> Ok []
+          | Ok (Some analysis) -> Ok [ analysis ])
+    in
+    match target_entries with
+    | Error message -> Error message
+    | Ok target_entries -> (
+        match file.status with
+        | Diff_types.Added -> Ok target_entries
+        | _ -> (
+            match
+              semantic_file_at_commit ~repo_root ~commit:diff_document.comparison.base
+                ~path:base_path
+            with
+            | Error message -> Error message
+            | Ok None -> Ok target_entries
+            | Ok (Some analysis) -> Ok (analysis :: target_entries)))
+  in
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc |> List.concat)
+    | file :: rest -> (
+        match extract_for_file file with
+        | Error message -> Error message
+        | Ok analyses -> loop (analyses :: acc) rest)
+  in
+  loop [] diff_document.Diff_types.files
+
+let scene_for_diff ?semantic_document (diff_document : Diff_types.git_diff_document) =
   let hierarchy_document = Hierarchy.build diff_document in
-  Semantic_join.from_repository_hierarchy hierarchy_document |> Scene.build
+  match semantic_document with
+  | None -> Semantic_join.from_repository_hierarchy hierarchy_document |> Scene.build
+  | Some semantic_document ->
+      Semantic_join.build ~diff_document ~hierarchy_document ~semantic_document
+      |> Scene.build
 
 let build ~repo_root ~base ~target ~path_filter =
   match resolve_git_root repo_root with
@@ -74,8 +131,22 @@ let build ~repo_root ~base ~target ~path_filter =
           let build_step index (base, target) =
             match Git_diff.extract ~repo_root ~base ~target ~path_filter with
             | Error message -> Error message
-            | Ok diff_document ->
-                let document = scene_for_diff diff_document in
+            | Ok diff_document -> (
+                match semantic_files_for_diff ~repo_root diff_document with
+                | Error message -> Error message
+                | Ok semantic_files ->
+                    let semantic_document =
+                      match semantic_files with
+                      | [] -> None
+                      | files ->
+                          Some
+                            {
+                              Semantic_types.version = 1;
+                              repo_root;
+                              files;
+                            }
+                    in
+                    let document = scene_for_diff ?semantic_document diff_document in
                 let target_short_hash, target_date =
                   commit_metadata ~repo_root target
                 in
@@ -88,7 +159,7 @@ let build ~repo_root ~base ~target ~path_filter =
                     target_date;
                     target_short_hash;
                     document;
-                  }
+                  })
           in
           let rec build_steps index acc = function
             | [] -> Ok (List.rev acc)

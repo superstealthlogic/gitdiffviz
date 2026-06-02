@@ -49,11 +49,6 @@ let node_span (node : TS.node) : source_span =
 
 let trim = String.trim
 
-let starts_with ~prefix value =
-  let prefix_len = String.length prefix in
-  String.length value >= prefix_len
-  && String.equal (String.sub value 0 prefix_len) prefix
-
 let rec find_first_named names (node : TS.node) =
   if List.mem node.type_ names then Some node
   else children node |> List.find_map (find_first_named names)
@@ -68,17 +63,71 @@ let name_from_node lines node =
          | first :: _ -> trim first
          | [] -> value)
 
-let declaration_header lines node =
-  line_at lines node.TS.start_pos.row
-  |> fun line -> substring_safe line node.start_pos.column (String.length line)
-  |> trim
+let declaration_header_window lines (node : TS.node) =
+  let end_row = min node.end_pos.row (node.start_pos.row + 8) in
+  let rec loop acc row =
+    if row > end_row then List.rev acc
+    else
+      let line =
+        if row = node.start_pos.row then
+          substring_safe (line_at lines row) node.start_pos.column
+            (String.length (line_at lines row))
+        else line_at lines row
+      in
+      loop (trim line :: acc) (row + 1)
+  in
+  loop [] node.start_pos.row |> String.concat " "
+
+let identifier_char = function
+  | 'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' -> true
+  | _ -> false
+
+let header_tokens header =
+  let len = String.length header in
+  let rec loop acc index =
+    if index >= len then List.rev acc
+    else if identifier_char header.[index] then
+      let start = index in
+      let rec take index =
+        if index < len && identifier_char header.[index] then take (index + 1)
+        else index
+      in
+      let end_index = take index in
+      let token = String.sub header start (end_index - start) in
+      loop (token :: acc) end_index
+    else loop acc (index + 1)
+  in
+  loop [] 0
+
+let name_after_keyword keywords header =
+  let tokens = header_tokens header in
+  let rec loop = function
+    | keyword :: name :: _ when List.mem keyword keywords -> Some name
+    | _ :: rest -> loop rest
+    | [] -> None
+  in
+  loop tokens
+
+let name_from_header lines node language_kind =
+  let header = declaration_header_window lines node in
+  match language_kind with
+  | "class" -> name_after_keyword [ "class" ] header
+  | "struct" -> name_after_keyword [ "struct" ] header
+  | "enum" -> name_after_keyword [ "enum" ] header
+  | "actor" -> name_after_keyword [ "actor" ] header
+  | "protocol" -> name_after_keyword [ "protocol" ] header
+  | "extension" -> name_after_keyword [ "extension" ] header
+  | "function" | "method" -> name_after_keyword [ "func" ] header
+  | "property" -> name_after_keyword [ "let"; "var" ] header
+  | "type_alias" -> name_after_keyword [ "typealias" ] header
+  | _ -> None
 
 let class_like_kind lines node =
-  let header = declaration_header lines node in
-  if starts_with ~prefix:"struct " header then "struct"
-  else if starts_with ~prefix:"enum " header then "enum"
-  else if starts_with ~prefix:"actor " header then "actor"
-  else if starts_with ~prefix:"extension " header then "extension"
+  let tokens = declaration_header_window lines node |> header_tokens in
+  if List.mem "struct" tokens then "struct"
+  else if List.mem "enum" tokens then "enum"
+  else if List.mem "actor" tokens then "actor"
+  else if List.mem "extension" tokens then "extension"
   else "class"
 
 let parent_is_type = function
@@ -108,8 +157,10 @@ let default_name lines node language_kind =
   match language_kind with
   | "initializer" -> Some "init"
   | "deinitializer" -> Some "deinit"
-  | "extension" -> name_from_node lines node
-  | _ -> name_from_node lines node
+  | _ -> (
+      match name_from_header lines node language_kind with
+      | Some name -> Some name
+      | None -> name_from_node lines node)
 
 let make_symbol ~path ~lines ~parents node =
   let kind, language_kind = kind_for lines node parents in

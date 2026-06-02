@@ -72,6 +72,12 @@ function issueChildrenOf(nodeId) {
   return sceneDocument.scene.nodes.filter((node) => node.parentId === nodeId && node.kind === "issue_marker");
 }
 
+function symbolChildrenOf(nodeId) {
+  return sceneDocument.scene.nodes.filter((node) =>
+    node.parentId === nodeId && ["type_container", "function", "symbol"].includes(node.kind)
+  );
+}
+
 function descendantNodesOf(nodeId) {
   const result = [];
   const queue = [...childrenOf(nodeId), ...issueChildrenOf(nodeId)];
@@ -368,6 +374,129 @@ function changedWeight(node) {
   return (node.diff?.linesAdded ?? 0) + (node.diff?.linesRemoved ?? 0);
 }
 
+const symbolSummaryLimit = 8;
+const symbolSummaryLineHeight = 14;
+
+function symbolChangeKind(node) {
+  const added = node.diff?.linesAdded ?? 0;
+  const removed = node.diff?.linesRemoved ?? 0;
+  if (node.status === "added" || (added > 0 && removed === 0)) return "added";
+  if (node.status === "deleted" || (removed > 0 && added === 0)) return "removed";
+  if (added > 0 && removed > 0) return "edited";
+  return null;
+}
+
+function changedSymbolSummaryForFile(fileNode, limit = 3) {
+  if (fileNode.kind !== "file") return [];
+  const descendants = descendantNodesOf(fileNode.id)
+    .filter((node) => ["type_container", "function", "symbol"].includes(node.kind))
+    .map((node) => ({ node, changeKind: symbolChangeKind(node) }))
+    .filter((entry) => entry.changeKind);
+
+  const directChangedIds = new Set(
+    symbolChildrenOf(fileNode.id)
+      .filter((node) => symbolChangeKind(node))
+      .map((node) => node.id)
+  );
+  const topLevel = descendants.filter((entry) => entry.node.parentId === fileNode.id);
+  const nestedWithoutChangedAncestor = descendants.filter((entry) => {
+    if (entry.node.parentId === fileNode.id) return false;
+    let cursor = entry.node.parentId ? nodeById(entry.node.parentId) : null;
+    while (cursor && cursor.id !== fileNode.id) {
+      if (directChangedIds.has(cursor.id)) return false;
+      cursor = cursor.parentId ? nodeById(cursor.parentId) : null;
+    }
+    return true;
+  });
+
+  const grouped = new Map();
+  for (const entry of [...topLevel, ...nestedWithoutChangedAncestor]) {
+    const key = `${entry.node.kind}:${entry.node.languageKind ?? ""}:${entry.node.name}`;
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        node: entry.node,
+        linesAdded: entry.node.diff?.linesAdded ?? 0,
+        linesRemoved: entry.node.diff?.linesRemoved ?? 0
+      });
+      continue;
+    }
+    existing.linesAdded += entry.node.diff?.linesAdded ?? 0;
+    existing.linesRemoved += entry.node.diff?.linesRemoved ?? 0;
+    if (changedWeight(entry.node) > changedWeight(existing.node)) existing.node = entry.node;
+  }
+
+  return Array.from(grouped.values())
+    .map((entry) => ({
+      node: {
+        ...entry.node,
+        diff: {
+          ...(entry.node.diff ?? {}),
+          linesAdded: entry.linesAdded,
+          linesRemoved: entry.linesRemoved
+        }
+      },
+      changeKind: symbolChangeKind({
+        ...entry.node,
+        diff: {
+          ...(entry.node.diff ?? {}),
+          linesAdded: entry.linesAdded,
+          linesRemoved: entry.linesRemoved
+        }
+      })
+    }))
+    .filter((entry) => entry.changeKind)
+    .sort((left, right) =>
+      changedWeight(right.node) - changedWeight(left.node) ||
+      (left.node.span?.startLine ?? 0) - (right.node.span?.startLine ?? 0) ||
+      left.node.name.localeCompare(right.node.name)
+    )
+    .slice(0, limit);
+}
+
+function changePrefix(changeKind) {
+  switch (changeKind) {
+    case "added": return "+";
+    case "removed": return "-";
+    case "edited": return "+/-";
+    default: return "";
+  }
+}
+
+function changeClass(changeKind) {
+  switch (changeKind) {
+    case "added": return "symbol-added";
+    case "removed": return "symbol-removed";
+    case "edited": return "symbol-edited";
+    default: return "node-meta";
+  }
+}
+
+function fileSymbolSummaryRows(node) {
+  if (node.kind !== "file") return [];
+  const allChangedSymbols = changedSymbolSummaryForFile(node, Number.MAX_SAFE_INTEGER);
+  const rows = allChangedSymbols.slice(0, symbolSummaryLimit);
+  if (allChangedSymbols.length > rows.length) {
+    rows.push({
+      node: { name: `+${allChangedSymbols.length - rows.length} more`, diff: { linesAdded: 0, linesRemoved: 0 } },
+      changeKind: "more"
+    });
+  }
+  return rows;
+}
+
+function requestedCardHeight(node, baseHeight) {
+  const rows = fileSymbolSummaryRows(node);
+  if (rows.length === 0) return baseHeight;
+  return Math.max(baseHeight, 90 + rows.length * symbolSummaryLineHeight);
+}
+
+function truncateText(value, maxChars) {
+  if (value.length <= maxChars) return value;
+  if (maxChars <= 1) return value.slice(0, maxChars);
+  return `${value.slice(0, maxChars - 3)}...`;
+}
+
 function layoutLanes(nodes) {
   const laneOrder = ["Directories", "Files", "Types", "Functions", "Symbols", "Other"];
   const grouped = new Map(laneOrder.map((lane) => [lane, []]));
@@ -386,10 +515,17 @@ function layoutLanes(nodes) {
     let x = 28;
     let rowBottom = y + 22;
     const cards = [];
+    const laneCardHeights = laneNodes.map((node) => {
+      const normalized = Math.max(0.12, node.render?.normalizedSize ?? 0.2);
+      const baseHeight = Math.round(88 + normalized * 50);
+      return requestedCardHeight(node, baseHeight);
+    });
+    const sharedFileHeight = lane === "Files" ? Math.max(...laneCardHeights) : null;
     for (const node of laneNodes) {
       const normalized = Math.max(0.12, node.render?.normalizedSize ?? 0.2);
       const width = Math.round(172 + normalized * 170);
-      const height = Math.round(88 + normalized * 50);
+      const baseHeight = Math.round(88 + normalized * 50);
+      const height = sharedFileHeight ?? requestedCardHeight(node, baseHeight);
       if (x + width > 1172) {
         x = 28;
         y = rowBottom + 18;
@@ -539,8 +675,28 @@ function renderCard(node, x, y, width, height, zoomOnClick = true) {
   diffText.textContent = `+${node.diff?.linesAdded ?? 0} / -${node.diff?.linesRemoved ?? 0}`;
   group.appendChild(diffText);
 
+  const symbolRows = fileSymbolSummaryRows(node);
+  if (symbolRows.length > 0) {
+    const maxChars = Math.max(12, Math.floor((width - 28) / 6));
+    symbolRows.forEach(({ node: symbolNode, changeKind }, index) => {
+      const rowText = createSvgElement("text", {
+        x: 12,
+        y: 82 + index * symbolSummaryLineHeight,
+        class: changeKind === "more" ? "node-symbol-more" : "node-symbol-summary"
+      });
+      if (changeKind === "more") {
+        rowText.textContent = symbolNode.name;
+      } else {
+        const prefix = changePrefix(changeKind);
+        rowText.textContent = `${prefix}${truncateText(symbolNode.name, maxChars - prefix.length)}`;
+        rowText.setAttribute("class", `node-symbol-summary ${changeClass(changeKind)}`);
+      }
+      group.appendChild(rowText);
+    });
+  }
+
   const semantic = [...(node.semantic?.patterns ?? []), ...(node.semantic?.paradigms ?? [])].slice(0, 2).join(", ");
-  if (semantic) {
+  if (semantic && symbolRows.length === 0) {
     const semanticText = createSvgElement("text", { x: 12, y: 82, class: "node-meta" });
     semanticText.textContent = semantic;
     group.appendChild(semanticText);

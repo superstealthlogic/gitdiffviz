@@ -291,6 +291,30 @@ body {
   pointer-events: none;
 }
 
+.node-symbol-summary {
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.node-symbol-more {
+  fill: var(--muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.symbol-added {
+  fill: var(--addition);
+}
+
+.symbol-removed {
+  fill: var(--deletion);
+}
+
+.symbol-edited {
+  fill: var(--muted);
+}
+
 .lane-title {
   font-size: 12px;
   font-weight: 700;
