@@ -8,9 +8,10 @@ const upButton = document.getElementById("upButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
 const openRepoButton = document.getElementById("openRepoButton");
 const nativePanel = document.getElementById("nativePanel");
-const repoInput = document.getElementById("repoInput");
-const baseInput = document.getElementById("baseInput");
-const targetInput = document.getElementById("targetInput");
+const repoPath = document.getElementById("repoPath");
+const browseRepoButton = document.getElementById("browseRepoButton");
+const baseSelect = document.getElementById("baseSelect");
+const targetSelect = document.getElementById("targetSelect");
 const timelineInput = document.getElementById("timelineInput");
 const renderRepoButton = document.getElementById("renderRepoButton");
 const nativeStatus = document.getElementById("nativeStatus");
@@ -29,6 +30,8 @@ let timelineDocument = null;
 let timelineStepIndex = 0;
 let currentRootId = rootNodeId;
 let selectedId = null;
+let selectedRepo = "";
+let commitOptions = [];
 
 function tauriInvoke(command, args = {}) {
   return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
@@ -805,24 +808,92 @@ function setupNativeControls() {
   for (const element of document.querySelectorAll(".tauri-only")) {
     element.hidden = false;
   }
+  renderRepoButton.disabled = true;
   nativeStatus.textContent = "Choose a repository to render.";
 }
 
 async function chooseRepository() {
   const selected = await tauriInvoke("choose_repository");
-  if (selected) repoInput.value = selected;
+  if (!selected) return;
+  selectedRepo = selected;
+  repoPath.textContent = selected;
+  repoPath.title = selected;
+  nativeStatus.textContent = "Loading commits...";
+  setCommitControlsEnabled(false);
+  try {
+    commitOptions = await tauriInvoke("list_commits", { repo: selected });
+    populateCommitSelects();
+    validateSelectedCommits();
+    nativeStatus.textContent = `${commitOptions.length} commits loaded.`;
+  } catch (error) {
+    commitOptions = [];
+    clearCommitSelects();
+    nativeStatus.textContent = error?.message ?? String(error);
+  }
+}
+
+function setCommitControlsEnabled(enabled) {
+  baseSelect.disabled = !enabled;
+  targetSelect.disabled = !enabled;
+  renderRepoButton.disabled = !enabled;
+}
+
+function clearCommitSelects() {
+  baseSelect.innerHTML = "";
+  targetSelect.innerHTML = "";
+  setCommitControlsEnabled(false);
+}
+
+function populateCommitSelects() {
+  clearCommitSelects();
+  for (const commit of commitOptions) {
+    baseSelect.appendChild(commitOptionElement(commit));
+    targetSelect.appendChild(commitOptionElement(commit));
+  }
+  targetSelect.selectedIndex = 0;
+  baseSelect.selectedIndex = Math.min(1, commitOptions.length - 1);
+  setCommitControlsEnabled(commitOptions.length >= 2);
+}
+
+function commitOptionElement(commit) {
+  const option = document.createElement("option");
+  option.value = commit.hash;
+  option.textContent = commit.label;
+  option.title = `${commit.hash} ${commit.subject}`;
+  return option;
+}
+
+function selectedCommitIndex(select) {
+  return commitOptions.findIndex((commit) => commit.hash === select.value);
+}
+
+function validateSelectedCommits() {
+  if (commitOptions.length < 2) {
+    renderRepoButton.disabled = true;
+    return false;
+  }
+  const baseIndex = selectedCommitIndex(baseSelect);
+  const targetIndex = selectedCommitIndex(targetSelect);
+  const valid = baseIndex > targetIndex;
+  renderRepoButton.disabled = !valid;
+  if (!valid) {
+    nativeStatus.textContent = "Base must be older than target.";
+  }
+  return valid;
 }
 
 async function renderRepository() {
-  const repo = repoInput.value.trim();
-  const base = baseInput.value.trim() || "HEAD~1";
-  const target = targetInput.value.trim() || "HEAD";
+  const repo = selectedRepo;
+  const base = baseSelect.value;
+  const target = targetSelect.value;
   if (!repo) {
     nativeStatus.textContent = "Choose a repository first.";
     return;
   }
+  if (!validateSelectedCommits()) return;
   renderRepoButton.disabled = true;
   openRepoButton.disabled = true;
+  browseRepoButton.disabled = true;
   nativeStatus.textContent = "Rendering...";
   try {
     const loadedDocument = await tauriInvoke("render_repository", {
@@ -838,8 +909,9 @@ async function renderRepository() {
   } catch (error) {
     nativeStatus.textContent = error?.message ?? String(error);
   } finally {
-    renderRepoButton.disabled = false;
+    validateSelectedCommits();
     openRepoButton.disabled = false;
+    browseRepoButton.disabled = false;
   }
 }
 
@@ -944,6 +1016,13 @@ openRepoButton.addEventListener("click", () => {
     nativeStatus.textContent = error?.message ?? String(error);
   });
 });
+browseRepoButton.addEventListener("click", () => {
+  chooseRepository().catch((error) => {
+    nativeStatus.textContent = error?.message ?? String(error);
+  });
+});
+baseSelect.addEventListener("change", validateSelectedCommits);
+targetSelect.addEventListener("change", validateSelectedCommits);
 renderRepoButton.addEventListener("click", () => {
   renderRepository();
 });
@@ -955,6 +1034,14 @@ themeToggleButton.addEventListener("click", () => {
 
 timelineSlider.addEventListener("input", () => {
   showTimelineStep(Number(timelineSlider.value));
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowUp") return;
+  const tagName = event.target?.tagName;
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+  event.preventDefault();
+  goUp();
 });
 
 boot().catch((error) => {

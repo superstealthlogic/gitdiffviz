@@ -24,15 +24,16 @@
     <section id="nativePanel" class="native-panel tauri-only" hidden>
       <label>
         Repo
-        <input id="repoInput" type="text" placeholder="/path/to/repo" />
+        <span id="repoPath" class="repo-path">No repository selected</span>
       </label>
+      <button id="browseRepoButton" type="button">Browse</button>
       <label>
         Base
-        <input id="baseInput" type="text" value="HEAD~1" />
+        <select id="baseSelect" disabled></select>
       </label>
       <label>
         Target
-        <input id="targetInput" type="text" value="HEAD" />
+        <select id="targetSelect" disabled></select>
       </label>
       <label class="checkbox-label">
         <input id="timelineInput" type="checkbox" />

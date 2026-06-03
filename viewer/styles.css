@@ -100,7 +100,7 @@ body {
 
 .native-panel {
   display: grid;
-  grid-template-columns: minmax(18rem, 1fr) 8rem 8rem auto auto minmax(10rem, auto);
+  grid-template-columns: minmax(16rem, 1fr) auto minmax(14rem, 18rem) minmax(14rem, 18rem) auto auto minmax(10rem, auto);
   align-items: end;
   gap: 10px;
   padding: 8px 22px 12px;
@@ -120,7 +120,9 @@ body {
   font-size: 12px;
 }
 
-.native-panel input[type="text"] {
+.native-panel input[type="text"],
+.native-panel select,
+.repo-path {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -130,6 +132,23 @@ body {
   color: var(--text);
   padding: 7px 9px;
   font: inherit;
+}
+
+.native-panel select {
+  cursor: pointer;
+}
+
+.native-panel select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.repo-path {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 35px;
 }
 
 .native-panel .checkbox-label {
