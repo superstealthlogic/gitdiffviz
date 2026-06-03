@@ -16,8 +16,10 @@ const browseRepoButton = document.getElementById("browseRepoButton");
 const baseSelect = document.getElementById("baseSelect");
 const targetSelect = document.getElementById("targetSelect");
 const timelineInput = document.getElementById("timelineInput");
+const waitOnButton = document.getElementById("waitOnButton");
 const renderRepoButton = document.getElementById("renderRepoButton");
 const nativeStatus = document.getElementById("nativeStatus");
+const repositoryPrompt = document.getElementById("repositoryPrompt");
 const timelinePanel = document.getElementById("timelinePanel");
 const timelineSlider = document.getElementById("timelineSlider");
 const timelineTicks = document.getElementById("timelineTicks");
@@ -41,6 +43,11 @@ let sceneZoomIndex = zoomLevels.indexOf(1);
 let sceneView = { x: 0, y: 0, width: sceneViewBox.width, height: sceneViewBox.height };
 let panState = null;
 let suppressNextSceneClick = false;
+let waitOnTimer = null;
+let waitOnBaseHash = "";
+let waitOnLatestHash = "";
+let waitOnRendering = false;
+const waitOnPollMs = 60_000;
 
 function tauriInvoke(command, args = {}) {
   return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
@@ -840,6 +847,11 @@ function renderScene() {
   }
 }
 
+function updateRepositoryPrompt() {
+  if (!repositoryPrompt || !isTauriHost()) return;
+  repositoryPrompt.hidden = Boolean(selectedRepo);
+}
+
 function applyDocument(loadedDocument) {
   if (loadedDocument.kind === "timeline" || Array.isArray(loadedDocument.steps)) {
     timelineDocument = loadedDocument;
@@ -847,6 +859,8 @@ function applyDocument(loadedDocument) {
     sceneDocument = timelineDocument.steps[0]?.document;
     setupTimelineControls();
   } else {
+    timelineDocument = null;
+    timelineStepIndex = 0;
     sceneDocument = loadedDocument;
     timelinePanel.hidden = true;
   }
@@ -854,6 +868,7 @@ function applyDocument(loadedDocument) {
   currentRootId = nodeById(rootNodeId) ? rootNodeId : sceneDocument.scene.nodes[0]?.id;
   updateSelection(nodeById(currentRootId));
   renderScene();
+  updateRepositoryPrompt();
 }
 
 async function loadSceneDocument() {
@@ -878,15 +893,19 @@ function setupNativeControls() {
     element.hidden = false;
   }
   renderRepoButton.disabled = true;
-  nativeStatus.textContent = "Choose a repository to render.";
+  waitOnButton.disabled = true;
+  nativeStatus.textContent = "No repository selected.";
+  updateRepositoryPrompt();
 }
 
 async function chooseRepository() {
   const selected = await tauriInvoke("choose_repository");
   if (!selected) return;
+  stopWaitOn("Repository changed.");
   selectedRepo = selected;
   repoPath.textContent = selected;
   repoPath.title = selected;
+  updateRepositoryPrompt();
   nativeStatus.textContent = "Loading commits...";
   setCommitControlsEnabled(false);
   try {
@@ -904,7 +923,8 @@ async function chooseRepository() {
 function setCommitControlsEnabled(enabled) {
   baseSelect.disabled = !enabled;
   targetSelect.disabled = !enabled;
-  renderRepoButton.disabled = !enabled;
+  renderRepoButton.disabled = !enabled || Boolean(waitOnTimer);
+  waitOnButton.disabled = !enabled;
 }
 
 function clearCommitSelects() {
@@ -944,7 +964,8 @@ function validateSelectedCommits() {
   const baseIndex = selectedCommitIndex(baseSelect);
   const targetIndex = selectedCommitIndex(targetSelect);
   const valid = baseIndex > targetIndex;
-  renderRepoButton.disabled = !valid;
+  renderRepoButton.disabled = !valid || Boolean(waitOnTimer);
+  waitOnButton.disabled = commitOptions.length < 1;
   if (!valid) {
     nativeStatus.textContent = "Base must be older than target.";
   }
@@ -963,6 +984,7 @@ async function renderRepository() {
   renderRepoButton.disabled = true;
   openRepoButton.disabled = true;
   browseRepoButton.disabled = true;
+  waitOnButton.disabled = true;
   nativeStatus.textContent = "Rendering...";
   try {
     const loadedDocument = await tauriInvoke("render_repository", {
@@ -981,7 +1003,105 @@ async function renderRepository() {
     validateSelectedCommits();
     openRepoButton.disabled = false;
     browseRepoButton.disabled = false;
+    waitOnButton.disabled = commitOptions.length < 1;
   }
+}
+
+function setSelectValue(select, value) {
+  const index = Array.from(select.options).findIndex((option) => option.value === value);
+  if (index >= 0) select.selectedIndex = index;
+}
+
+async function renderWaitOnTimeline(targetHash) {
+  if (!selectedRepo || !waitOnBaseHash || waitOnRendering) return;
+  waitOnRendering = true;
+  renderRepoButton.disabled = true;
+  waitOnButton.disabled = true;
+  nativeStatus.textContent = "New commits found. Rendering timeline...";
+  try {
+    const loadedDocument = await tauriInvoke("render_repository", {
+      request: {
+        repo: selectedRepo,
+        base: waitOnBaseHash,
+        target: targetHash,
+        timeline: true
+      }
+    });
+    waitOnLatestHash = targetHash;
+    timelineInput.checked = true;
+    setSelectValue(baseSelect, waitOnBaseHash);
+    setSelectValue(targetSelect, targetHash);
+    applyDocument(loadedDocument);
+    const count = timelineDocument?.steps?.length ?? 0;
+    nativeStatus.textContent = count > 0
+      ? `Watching. Timeline has ${count} new commit${count === 1 ? "" : "s"}.`
+      : "Watching. No timeline steps yet.";
+  } catch (error) {
+    nativeStatus.textContent = error?.message ?? String(error);
+  } finally {
+    waitOnRendering = false;
+    renderRepoButton.disabled = Boolean(waitOnTimer);
+    waitOnButton.disabled = false;
+  }
+}
+
+async function pollWaitOn() {
+  if (!selectedRepo || !waitOnBaseHash || waitOnRendering) return;
+  try {
+    const latestCommits = await tauriInvoke("list_commits", { repo: selectedRepo });
+    if (!Array.isArray(latestCommits) || latestCommits.length === 0) return;
+    commitOptions = latestCommits;
+    populateCommitSelects();
+    setSelectValue(baseSelect, waitOnBaseHash);
+    const head = latestCommits[0]?.hash ?? "";
+    setSelectValue(targetSelect, head);
+    if (head && head !== waitOnLatestHash && head !== waitOnBaseHash) {
+      await renderWaitOnTimeline(head);
+      return;
+    }
+    nativeStatus.textContent = "Watching. No new commits.";
+  } catch (error) {
+    nativeStatus.textContent = error?.message ?? String(error);
+  }
+}
+
+function startWaitOn() {
+  if (!selectedRepo || commitOptions.length === 0) {
+    nativeStatus.textContent = "Choose a repository first.";
+    return;
+  }
+  waitOnBaseHash = commitOptions[0].hash;
+  waitOnLatestHash = waitOnBaseHash;
+  waitOnButton.textContent = "Stop";
+  timelineInput.checked = true;
+  setSelectValue(baseSelect, waitOnBaseHash);
+  setSelectValue(targetSelect, waitOnBaseHash);
+  renderRepoButton.disabled = true;
+  nativeStatus.textContent = `Watching from ${commitOptions[0].short_hash ?? shortHash(waitOnBaseHash)}.`;
+  waitOnTimer = window.setInterval(() => {
+    pollWaitOn();
+  }, waitOnPollMs);
+}
+
+function stopWaitOn(message = "Stopped watching.") {
+  if (waitOnTimer) {
+    window.clearInterval(waitOnTimer);
+    waitOnTimer = null;
+  }
+  waitOnBaseHash = "";
+  waitOnLatestHash = "";
+  waitOnRendering = false;
+  waitOnButton.textContent = "Wait On";
+  if (message && selectedRepo) nativeStatus.textContent = message;
+}
+
+function toggleWaitOn() {
+  if (waitOnTimer) {
+    stopWaitOn();
+    if (commitOptions.length > 0) populateCommitSelects();
+    return;
+  }
+  startWaitOn();
 }
 
 function setupTimelineControls() {
@@ -1098,6 +1218,7 @@ targetSelect.addEventListener("change", validateSelectedCommits);
 renderRepoButton.addEventListener("click", () => {
   renderRepository();
 });
+waitOnButton.addEventListener("click", toggleWaitOn);
 themeToggleButton.addEventListener("click", () => {
   setTheme(currentTheme() === "light" ? "dark" : "light");
   renderLegend(sceneDocument.scene?.legend ?? []);
