@@ -98,6 +98,69 @@ body {
   cursor: default;
 }
 
+.native-panel {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) 8rem 8rem auto auto minmax(10rem, auto);
+  align-items: end;
+  gap: 10px;
+  padding: 8px 22px 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+
+.native-panel[hidden] {
+  display: none !important;
+}
+
+.native-panel label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.native-panel input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 7px 9px;
+  font: inherit;
+}
+
+.native-panel .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 35px;
+}
+
+.native-panel button {
+  height: 35px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.native-panel button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#nativeStatus {
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 0;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 300px 1fr auto;

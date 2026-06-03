@@ -1,0 +1,14 @@
+{
+  "name": "git-visualization-diff-native",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "prepare-backend": "scripts/prepare-backend.sh",
+    "dev": "npm run prepare-backend && tauri dev",
+    "build": "npm run prepare-backend && tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

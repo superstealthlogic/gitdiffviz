@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Git Visualization Diff</title>
-    <link rel="stylesheet" href="/viewer/styles.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./vendor/highlight.min.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -14,11 +14,33 @@
         <p id="summary">Loading scene...</p>
       </div>
       <div class="controls">
+        <button id="openRepoButton" class="tauri-only" type="button" title="Open repository" hidden>Open Repo</button>
         <button id="upButton" type="button" title="Go to parent">Up</button>
         <button id="resetButton" type="button" title="Return to repository root">Reset</button>
         <button id="themeToggleButton" type="button" title="Toggle theme">Light</button>
       </div>
     </header>
+
+    <section id="nativePanel" class="native-panel tauri-only" hidden>
+      <label>
+        Repo
+        <input id="repoInput" type="text" placeholder="/path/to/repo" />
+      </label>
+      <label>
+        Base
+        <input id="baseInput" type="text" value="HEAD~1" />
+      </label>
+      <label>
+        Target
+        <input id="targetInput" type="text" value="HEAD" />
+      </label>
+      <label class="checkbox-label">
+        <input id="timelineInput" type="checkbox" />
+        Timeline
+      </label>
+      <button id="renderRepoButton" type="button">Render</button>
+      <span id="nativeStatus" role="status"></span>
+    </section>
 
     <main class="layout">
       <aside class="sidebar">
@@ -50,6 +72,6 @@
       </aside>
     </main>
 
-    <script type="module" src="/viewer/app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

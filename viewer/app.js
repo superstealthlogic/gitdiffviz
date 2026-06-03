@@ -6,6 +6,14 @@ const summaryEl = document.getElementById("summary");
 const resetButton = document.getElementById("resetButton");
 const upButton = document.getElementById("upButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
+const openRepoButton = document.getElementById("openRepoButton");
+const nativePanel = document.getElementById("nativePanel");
+const repoInput = document.getElementById("repoInput");
+const baseInput = document.getElementById("baseInput");
+const targetInput = document.getElementById("targetInput");
+const timelineInput = document.getElementById("timelineInput");
+const renderRepoButton = document.getElementById("renderRepoButton");
+const nativeStatus = document.getElementById("nativeStatus");
 const timelinePanel = document.getElementById("timelinePanel");
 const timelineSlider = document.getElementById("timelineSlider");
 const timelineTicks = document.getElementById("timelineTicks");
@@ -21,6 +29,14 @@ let timelineDocument = null;
 let timelineStepIndex = 0;
 let currentRootId = rootNodeId;
 let selectedId = null;
+
+function tauriInvoke(command, args = {}) {
+  return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
+}
+
+function isTauriHost() {
+  return Boolean(globalThis.__TAURI__?.core?.invoke);
+}
 
 function cssColor(name, fallback) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
@@ -752,11 +768,7 @@ function renderScene() {
   }
 }
 
-async function boot() {
-  setTheme(localStorage.getItem("git-visualization-diff-theme") === "light" ? "light" : "dark");
-  const response = await fetch("/scene.json");
-  if (!response.ok) throw new Error(`scene request failed: ${response.status}`);
-  const loadedDocument = await response.json();
+function applyDocument(loadedDocument) {
   if (loadedDocument.kind === "timeline" || Array.isArray(loadedDocument.steps)) {
     timelineDocument = loadedDocument;
     timelineStepIndex = 0;
@@ -770,6 +782,65 @@ async function boot() {
   currentRootId = nodeById(rootNodeId) ? rootNodeId : sceneDocument.scene.nodes[0]?.id;
   updateSelection(nodeById(currentRootId));
   renderScene();
+}
+
+async function loadSceneDocument() {
+  const nativeScene = tauriInvoke("load_scene");
+  if (nativeScene) return nativeScene;
+
+  const response = await fetch("/scene.json");
+  if (!response.ok) throw new Error(`scene request failed: ${response.status}`);
+  return response.json();
+}
+
+async function boot() {
+  setTheme(localStorage.getItem("git-visualization-diff-theme") === "light" ? "light" : "dark");
+  setupNativeControls();
+  const loadedDocument = await loadSceneDocument();
+  applyDocument(loadedDocument);
+}
+
+function setupNativeControls() {
+  if (!isTauriHost()) return;
+  for (const element of document.querySelectorAll(".tauri-only")) {
+    element.hidden = false;
+  }
+  nativeStatus.textContent = "Choose a repository to render.";
+}
+
+async function chooseRepository() {
+  const selected = await tauriInvoke("choose_repository");
+  if (selected) repoInput.value = selected;
+}
+
+async function renderRepository() {
+  const repo = repoInput.value.trim();
+  const base = baseInput.value.trim() || "HEAD~1";
+  const target = targetInput.value.trim() || "HEAD";
+  if (!repo) {
+    nativeStatus.textContent = "Choose a repository first.";
+    return;
+  }
+  renderRepoButton.disabled = true;
+  openRepoButton.disabled = true;
+  nativeStatus.textContent = "Rendering...";
+  try {
+    const loadedDocument = await tauriInvoke("render_repository", {
+      request: {
+        repo,
+        base,
+        target,
+        timeline: timelineInput.checked
+      }
+    });
+    applyDocument(loadedDocument);
+    nativeStatus.textContent = "Rendered.";
+  } catch (error) {
+    nativeStatus.textContent = error?.message ?? String(error);
+  } finally {
+    renderRepoButton.disabled = false;
+    openRepoButton.disabled = false;
+  }
 }
 
 function setupTimelineControls() {
@@ -868,6 +939,14 @@ function showTimelineStep(index) {
 
 resetButton.addEventListener("click", () => goToNode(rootNodeId));
 upButton.addEventListener("click", goUp);
+openRepoButton.addEventListener("click", () => {
+  chooseRepository().catch((error) => {
+    nativeStatus.textContent = error?.message ?? String(error);
+  });
+});
+renderRepoButton.addEventListener("click", () => {
+  renderRepository();
+});
 themeToggleButton.addEventListener("click", () => {
   setTheme(currentTheme() === "light" ? "dark" : "light");
   renderLegend(sceneDocument.scene?.legend ?? []);

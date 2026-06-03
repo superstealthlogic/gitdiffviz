@@ -104,6 +104,55 @@ let extract_diff repo_root base target path_filter out_path =
   in
   result_to_exit result
 
+let recognized_semantic_path path =
+  match Language.detect_by_path path with
+  | "c" | "cpp" | "rust" | "swift" -> true
+  | _ -> false
+
+let semantic_candidate_files diff_document =
+  diff_document.Diff_types.files
+  |> List.filter_map (fun (file : Diff_types.diff_file_entry) ->
+         match file.status with
+         | Deleted -> None
+         | _ when recognized_semantic_path file.path -> Some file.path
+         | _ -> None)
+
+let scene_for_diff repo_root diff_document =
+  let semantic_files = semantic_candidate_files diff_document in
+  match semantic_files with
+  | [] ->
+      let hierarchy_document = Hierarchy.build diff_document in
+      Semantic_join.from_repository_hierarchy hierarchy_document |> Scene.build
+      |> fun document -> Ok document
+  | files -> (
+      match Semantic_extract.extract ~repo_root ~files with
+      | Error message -> Error message
+      | Ok semantic_document ->
+          let hierarchy_document = Hierarchy.build diff_document in
+          Semantic_join.build ~diff_document ~hierarchy_document ~semantic_document
+          |> Scene.build |> fun document -> Ok document)
+
+let render_repo repo_root base target path_filter timeline out_path =
+  let result =
+    if timeline then
+      match Timeline.build ~repo_root ~base ~target ~path_filter with
+      | Error message -> Error message
+      | Ok timeline_document ->
+          timeline_document |> Json_codec.timeline_document_to_yojson
+          |> write_or_stdout out_path
+    else
+      match Git_diff.extract ~repo_root ~base ~target ~path_filter with
+      | Error message -> Error message
+      | Ok diff_document ->
+          let repo_root = diff_document.repo_root in
+          match scene_for_diff repo_root diff_document with
+          | Error message -> Error message
+          | Ok scene_document ->
+              scene_document |> Json_codec.visualization_document_to_yojson
+              |> write_or_stdout out_path
+  in
+  result_to_exit result
+
 let build_timeline repo_root base target path_filter out_path =
   let result =
     match Timeline.build ~repo_root ~base ~target ~path_filter with
@@ -193,6 +242,19 @@ let build_timeline_cmd =
         (const build_timeline $ repo_arg $ base_arg $ target_arg $ path_filter_arg
        $ out_arg))
 
+let timeline_flag =
+  let doc = "Build a timeline document instead of a single scene." in
+  Arg.(value & flag & info [ "timeline" ] ~doc)
+
+let render_repo_cmd =
+  let doc = "Run the repository diff pipeline and write renderer-ready JSON." in
+  let info = Cmd.info "render-repo" ~doc in
+  Cmd.v info
+    Term.(
+      ret
+        (const render_repo $ repo_arg $ base_arg $ target_arg $ path_filter_arg
+       $ timeline_flag $ out_arg))
+
 let default_cmd =
   let doc = "Typed OCaml backend for git diff visualization documents." in
   let info = Cmd.info "git-visualization-diff" ~version:"0.1.0" ~doc in
@@ -204,6 +266,7 @@ let default_cmd =
       build_timeline_cmd;
       extract_diff_cmd;
       extract_semantics_cmd;
+      render_repo_cmd;
     ]
 
 let () = exit (Cmd.eval default_cmd)

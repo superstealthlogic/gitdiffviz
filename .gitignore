@@ -1,2 +1,7 @@
 _build
 resume.dat
+native/tauri/node_modules/
+native/tauri/src-tauri/binaries/
+native/tauri/src-tauri/gen/
+native/tauri/src-tauri/resources/
+native/tauri/src-tauri/target/

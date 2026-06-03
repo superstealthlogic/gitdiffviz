@@ -45,6 +45,17 @@ const server = http.createServer((request, response) => {
     response.end(fs.readFileSync(scenePath));
     return;
   }
+  if (url.pathname === "/styles.css" || url.pathname === "/app.js" || url.pathname.startsWith("/vendor/")) {
+    const filePath = path.join(viewerRoot, url.pathname.slice(1));
+    if (!filePath.startsWith(viewerRoot) || !fs.existsSync(filePath)) {
+      response.writeHead(404);
+      response.end("Not found");
+      return;
+    }
+    response.writeHead(200, { "Content-Type": contentType(filePath) });
+    response.end(fs.readFileSync(filePath));
+    return;
+  }
   if (url.pathname.startsWith("/viewer/")) {
     const filePath = path.join(root, url.pathname.slice(1));
     if (!filePath.startsWith(viewerRoot) || !fs.existsSync(filePath)) {
