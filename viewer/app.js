@@ -5,6 +5,9 @@ const selectionEl = document.getElementById("selection");
 const summaryEl = document.getElementById("summary");
 const resetButton = document.getElementById("resetButton");
 const upButton = document.getElementById("upButton");
+const zoomOutButton = document.getElementById("zoomOutButton");
+const zoomResetButton = document.getElementById("zoomResetButton");
+const zoomInButton = document.getElementById("zoomInButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
 const openRepoButton = document.getElementById("openRepoButton");
 const nativePanel = document.getElementById("nativePanel");
@@ -24,6 +27,8 @@ const timelineEndDateBottom = document.getElementById("timelineEndDateBottom");
 
 const svgNS = "http://www.w3.org/2000/svg";
 const rootNodeId = "repo";
+const sceneViewBox = { width: 1200, height: 800 };
+const zoomLevels = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 2.5, 3];
 
 let sceneDocument;
 let timelineDocument = null;
@@ -32,6 +37,10 @@ let currentRootId = rootNodeId;
 let selectedId = null;
 let selectedRepo = "";
 let commitOptions = [];
+let sceneZoomIndex = zoomLevels.indexOf(1);
+let sceneView = { x: 0, y: 0, width: sceneViewBox.width, height: sceneViewBox.height };
+let panState = null;
+let suppressNextSceneClick = false;
 
 function tauriInvoke(command, args = {}) {
   return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
@@ -53,6 +62,65 @@ function setTheme(theme) {
 
 function currentTheme() {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+function currentSceneZoom() {
+  return zoomLevels[sceneZoomIndex] ?? 1;
+}
+
+function updateSceneZoom() {
+  applySceneView();
+  zoomOutButton.disabled = sceneZoomIndex === 0;
+  zoomInButton.disabled = sceneZoomIndex === zoomLevels.length - 1;
+  zoomResetButton.textContent = `${Math.round(currentSceneZoom() * 100)}%`;
+}
+
+function applySceneView() {
+  clampSceneView();
+  svg.setAttribute("viewBox", `${sceneView.x} ${sceneView.y} ${sceneView.width} ${sceneView.height}`);
+}
+
+function clampSceneView() {
+  sceneView.width = Math.min(sceneViewBox.width, Math.max(1, sceneView.width));
+  sceneView.height = Math.min(sceneViewBox.height, Math.max(1, sceneView.height));
+  const maxX = sceneViewBox.width - sceneView.width;
+  const maxY = sceneViewBox.height - sceneView.height;
+  sceneView.x = Math.min(maxX, Math.max(0, sceneView.x));
+  sceneView.y = Math.min(maxY, Math.max(0, sceneView.y));
+}
+
+function changeSceneZoom(delta) {
+  const oldCenterX = sceneView.x + sceneView.width / 2;
+  const oldCenterY = sceneView.y + sceneView.height / 2;
+  sceneZoomIndex = Math.min(zoomLevels.length - 1, Math.max(0, sceneZoomIndex + delta));
+  const zoom = currentSceneZoom();
+  sceneView.width = sceneViewBox.width / zoom;
+  sceneView.height = sceneViewBox.height / zoom;
+  sceneView.x = oldCenterX - sceneView.width / 2;
+  sceneView.y = oldCenterY - sceneView.height / 2;
+  applySceneView();
+  updateSceneZoom();
+}
+
+function resetSceneZoom() {
+  sceneZoomIndex = zoomLevels.indexOf(1);
+  sceneView = { x: 0, y: 0, width: sceneViewBox.width, height: sceneViewBox.height };
+  updateSceneZoom();
+}
+
+function panSceneBy(dx, dy) {
+  if (currentSceneZoom() <= 1) return;
+  sceneView.x += dx;
+  sceneView.y += dy;
+  applySceneView();
+}
+
+function svgPointFromPointer(event) {
+  const rect = svg.getBoundingClientRect();
+  return {
+    x: sceneView.x + ((event.clientX - rect.left) / rect.width) * sceneView.width,
+    y: sceneView.y + ((event.clientY - rect.top) / rect.height) * sceneView.height
+  };
 }
 
 function createSvgElement(name, attrs = {}) {
@@ -741,6 +809,7 @@ function renderCard(node, x, y, width, height, zoomOnClick = true) {
 function renderScene() {
   svg.style.opacity = "1";
   svg.innerHTML = "";
+  updateSceneZoom();
   const root = nodeById(currentRootId);
   const visible = childrenOf(currentRootId);
   summaryEl.textContent = root
@@ -1011,6 +1080,9 @@ function showTimelineStep(index) {
 
 resetButton.addEventListener("click", () => goToNode(rootNodeId));
 upButton.addEventListener("click", goUp);
+zoomOutButton.addEventListener("click", () => changeSceneZoom(-1));
+zoomResetButton.addEventListener("click", resetSceneZoom);
+zoomInButton.addEventListener("click", () => changeSceneZoom(1));
 openRepoButton.addEventListener("click", () => {
   chooseRepository().catch((error) => {
     nativeStatus.textContent = error?.message ?? String(error);
@@ -1035,6 +1107,62 @@ themeToggleButton.addEventListener("click", () => {
 timelineSlider.addEventListener("input", () => {
   showTimelineStep(Number(timelineSlider.value));
 });
+
+svg.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || currentSceneZoom() <= 1) return;
+  const start = svgPointFromPointer(event);
+  panState = {
+    pointerId: event.pointerId,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    startSceneX: start.x,
+    startSceneY: start.y,
+    moved: false
+  };
+  svg.setPointerCapture(event.pointerId);
+  svg.classList.add("dragging");
+});
+
+svg.addEventListener("pointermove", (event) => {
+  if (!panState || panState.pointerId !== event.pointerId) return;
+  const current = svgPointFromPointer(event);
+  if (Math.abs(event.clientX - panState.startClientX) > 3 || Math.abs(event.clientY - panState.startClientY) > 3) {
+    panState.moved = true;
+  }
+  panSceneBy(panState.startSceneX - current.x, panState.startSceneY - current.y);
+});
+
+svg.addEventListener("pointerup", (event) => {
+  if (!panState || panState.pointerId !== event.pointerId) return;
+  svg.releasePointerCapture(event.pointerId);
+  svg.classList.remove("dragging");
+  if (panState.moved) {
+    suppressNextSceneClick = true;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  panState = null;
+});
+
+svg.addEventListener("pointercancel", (event) => {
+  if (!panState || panState.pointerId !== event.pointerId) return;
+  svg.classList.remove("dragging");
+  panState = null;
+});
+
+svg.addEventListener("wheel", (event) => {
+  if (currentSceneZoom() <= 1) return;
+  event.preventDefault();
+  const factor = event.shiftKey ? 0.5 : 1;
+  panSceneBy(event.deltaX * factor, event.deltaY * factor);
+}, { passive: false });
+
+svg.addEventListener("click", (event) => {
+  if (!suppressNextSceneClick) return;
+  suppressNextSceneClick = false;
+  event.preventDefault();
+  event.stopPropagation();
+}, true);
 
 window.addEventListener("keydown", (event) => {
   if (event.key !== "ArrowUp") return;

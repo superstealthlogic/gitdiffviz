@@ -59,6 +59,14 @@
         </section>
       </aside>
       <section class="canvas-panel">
+        <div class="canvas-toolbar">
+          <span>Repository View</span>
+          <div class="zoom-controls">
+            <button id="zoomOutButton" type="button" title="Zoom out">-</button>
+            <button id="zoomResetButton" type="button" title="Reset zoom">100%</button>
+            <button id="zoomInButton" type="button" title="Zoom in">+</button>
+          </div>
+        </div>
         <svg id="scene" viewBox="0 0 1200 800" role="img" aria-label="Git visualization diff scene"></svg>
       </section>
       <aside id="timelinePanel" class="timeline-panel" hidden>
