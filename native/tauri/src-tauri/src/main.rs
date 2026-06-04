@@ -8,8 +8,6 @@ use std::{
 };
 use tauri::{AppHandle, Manager, State, UserAttentionType};
 
-const SAMPLE_SCENE: &str = include_str!("../../../../examples/sample-scene.json");
-
 #[derive(Default)]
 struct AppState {
     scene_path: Mutex<Option<PathBuf>>,
@@ -91,7 +89,7 @@ fn list_commits(repo: String) -> Result<Vec<CommitOption>, String> {
 }
 
 #[tauri::command]
-fn load_scene(state: State<'_, AppState>) -> Result<Value, String> {
+fn load_scene(state: State<'_, AppState>) -> Result<Option<Value>, String> {
     let scene_path = state
         .scene_path
         .lock()
@@ -99,8 +97,8 @@ fn load_scene(state: State<'_, AppState>) -> Result<Value, String> {
         .clone();
 
     match scene_path {
-        Some(path) => read_json_file(&path),
-        None => serde_json::from_str(SAMPLE_SCENE).map_err(|error| error.to_string()),
+        Some(path) => read_json_file(&path).map(Some),
+        None => Ok(None),
     }
 }
 

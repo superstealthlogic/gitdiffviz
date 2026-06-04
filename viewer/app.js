@@ -53,6 +53,8 @@ let waitOnLatestHash = "";
 let waitOnRendering = false;
 let unseenWatchCommitCount = 0;
 const waitOnPollMs = 60_000;
+const chooseRepositoryPrompt = "Choose a repository to render";
+const renderRepositoryPrompt = "Review commits, then render this repository";
 
 function tauriInvoke(command, args = {}) {
   return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
@@ -868,6 +870,10 @@ function renderCard(node, x, y, width, height, zoomOnClick = true) {
 }
 
 function renderScene() {
+  if (!sceneDocument) {
+    clearScene();
+    return;
+  }
   svg.style.opacity = "1";
   svg.innerHTML = "";
   updateSceneZoom();
@@ -904,7 +910,24 @@ function renderScene() {
 
 function updateRepositoryPrompt() {
   if (!repositoryPrompt || !isTauriHost()) return;
-  repositoryPrompt.hidden = Boolean(selectedRepo);
+  repositoryPrompt.textContent = selectedRepo ? renderRepositoryPrompt : chooseRepositoryPrompt;
+  repositoryPrompt.hidden = Boolean(sceneDocument);
+}
+
+function clearScene() {
+  sceneDocument = null;
+  timelineDocument = null;
+  timelineStepIndex = 0;
+  currentRootId = rootNodeId;
+  selectedId = null;
+  svg.innerHTML = "";
+  renderLegend([]);
+  updateSelection(null);
+  summaryEl.textContent = selectedRepo ? "Ready to render repository." : "No repository selected.";
+  zoomSummaryEl.textContent = "Render a repository to inspect its structure.";
+  upButton.disabled = true;
+  timelinePanel.hidden = true;
+  updateRepositoryPrompt();
 }
 
 function setWaitOnButtonText(text) {
@@ -981,7 +1004,11 @@ async function boot() {
   setTheme(localStorage.getItem("git-visualization-diff-theme") === "light" ? "light" : "dark");
   setupNativeControls();
   const loadedDocument = await loadSceneDocument();
-  applyDocument(loadedDocument);
+  if (loadedDocument) {
+    applyDocument(loadedDocument);
+  } else {
+    clearScene();
+  }
 }
 
 function setupNativeControls() {
@@ -1002,7 +1029,7 @@ async function chooseRepository() {
   selectedRepo = selected;
   repoPath.textContent = selected;
   repoPath.title = selected;
-  updateRepositoryPrompt();
+  clearScene();
   nativeStatus.textContent = "Loading commits...";
   setCommitControlsEnabled(false);
   try {
@@ -1397,7 +1424,9 @@ window.addEventListener("keydown", (event) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
 
   const root = nodeById(currentRootId);
-  if (root?.kind === "file" && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+  const modifiedArrow = (event.metaKey || event.ctrlKey)
+    && (event.key === "ArrowUp" || event.key === "ArrowDown");
+  if (root?.kind === "file" && modifiedArrow) {
     event.preventDefault();
     const direction = event.key === "ArrowDown" ? 1 : -1;
     scrollFileDiffBy(direction * (event.shiftKey ? 8 : 1));
