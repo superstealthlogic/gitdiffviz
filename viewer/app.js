@@ -43,6 +43,8 @@ let selectedRepo = "";
 let commitOptions = [];
 let sceneZoomIndex = zoomLevels.indexOf(1);
 let sceneView = { x: 0, y: 0, width: sceneViewBox.width, height: sceneViewBox.height };
+let fileDiffScrollRootId = null;
+let fileDiffScrollRow = 0;
 let panState = null;
 let suppressNextSceneClick = false;
 let waitOnTimer = null;
@@ -657,6 +659,7 @@ function goToNode(nodeId) {
   const node = nodeById(nodeId);
   if (!node) return;
   currentRootId = node.id;
+  resetFileDiffScrollIfNeeded();
   selectedId = node.id;
   updateSelection(node);
   renderScene();
@@ -667,7 +670,27 @@ function goUp() {
   if (root?.parentId) goToNode(root.parentId);
 }
 
-function renderFileDiff(root, semanticChildren) {
+function resetFileDiffScrollIfNeeded() {
+  if (fileDiffScrollRootId !== currentRootId) {
+    fileDiffScrollRootId = currentRootId;
+    fileDiffScrollRow = 0;
+  }
+}
+
+function scrollFileDiffBy(deltaRows) {
+  const root = nodeById(currentRootId);
+  if (root?.kind !== "file") return false;
+  const rows = diffRowsForFile(root);
+  const visibleCount = visibleDiffRowCount(rows);
+  const maxScrollRow = Math.max(0, rows.length - visibleCount);
+  const nextScrollRow = Math.min(maxScrollRow, Math.max(0, fileDiffScrollRow + deltaRows));
+  if (nextScrollRow === fileDiffScrollRow) return true;
+  fileDiffScrollRow = nextScrollRow;
+  renderScene();
+  return true;
+}
+
+function diffRowsForFile(root) {
   const rows = [];
   for (const hunk of root.hunks ?? []) {
     rows.push({ kind: "hunk", text: hunk.header });
@@ -676,11 +699,28 @@ function renderFileDiff(root, semanticChildren) {
   if (rows.length === 0 && root.status === "added") rows.push({ kind: "hunk", text: `new file: ${root.path}` });
   if (rows.length === 0 && root.status === "deleted") rows.push({ kind: "hunk", text: `deleted file: ${root.oldPath ?? root.path}` });
   if (rows.length === 0) rows.push({ kind: "hunk", text: "No textual diff available." });
+  return rows;
+}
 
+function diffPanelHeight(rowCount) {
+  const rowHeight = 18;
+  return Math.min(620, Math.max(170, rowCount * rowHeight + 46));
+}
+
+function visibleDiffRowCount(rows) {
+  const rowHeight = 18;
+  return Math.floor((diffPanelHeight(rows.length) - 40) / rowHeight);
+}
+
+function renderFileDiff(root, semanticChildren) {
+  const rows = diffRowsForFile(root);
   const panel = createSvgElement("g", { transform: "translate(28, 70)" });
   const width = 1144;
   const rowHeight = 18;
-  const diffHeight = Math.min(620, Math.max(170, rows.length * rowHeight + 46));
+  const diffHeight = diffPanelHeight(rows.length);
+  const visibleCount = visibleDiffRowCount(rows);
+  const maxScrollRow = Math.max(0, rows.length - visibleCount);
+  fileDiffScrollRow = Math.min(maxScrollRow, Math.max(0, fileDiffScrollRow));
   panel.appendChild(createSvgElement("rect", {
     x: 0,
     y: 0,
@@ -702,7 +742,13 @@ function renderFileDiff(root, semanticChildren) {
   title.textContent = root.path ?? root.name;
   panel.appendChild(title);
 
-  const visibleRows = rows.slice(0, Math.floor((diffHeight - 40) / rowHeight));
+  if (maxScrollRow > 0) {
+    const scrollLabel = createSvgElement("text", { x: width - 132, y: 23, class: "diff-scroll-label" });
+    scrollLabel.textContent = `${fileDiffScrollRow + 1}-${Math.min(rows.length, fileDiffScrollRow + visibleCount)} / ${rows.length}`;
+    panel.appendChild(scrollLabel);
+  }
+
+  const visibleRows = rows.slice(fileDiffScrollRow, fileDiffScrollRow + visibleCount);
   visibleRows.forEach((row, index) => {
     const y = 44 + index * rowHeight;
     if (row.kind === "addition" || row.kind === "deletion") {
@@ -825,6 +871,7 @@ function renderScene() {
   svg.style.opacity = "1";
   svg.innerHTML = "";
   updateSceneZoom();
+  resetFileDiffScrollIfNeeded();
   const root = nodeById(currentRootId);
   const visible = childrenOf(currentRootId);
   summaryEl.textContent = root
@@ -1325,6 +1372,13 @@ svg.addEventListener("pointercancel", (event) => {
 });
 
 svg.addEventListener("wheel", (event) => {
+  const root = nodeById(currentRootId);
+  if (root?.kind === "file") {
+    const rowDelta = Math.sign(event.deltaY) * Math.max(1, Math.ceil(Math.abs(event.deltaY) / 28));
+    if (rowDelta !== 0 && scrollFileDiffBy(rowDelta)) event.preventDefault();
+    return;
+  }
+
   if (currentSceneZoom() <= 1) return;
   event.preventDefault();
   const factor = event.shiftKey ? 0.5 : 1;
@@ -1339,9 +1393,18 @@ svg.addEventListener("click", (event) => {
 }, true);
 
 window.addEventListener("keydown", (event) => {
-  if (event.key !== "ArrowUp") return;
   const tagName = event.target?.tagName;
   if (["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
+
+  const root = nodeById(currentRootId);
+  if (root?.kind === "file" && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    scrollFileDiffBy(direction * (event.shiftKey ? 8 : 1));
+    return;
+  }
+
+  if (event.key !== "ArrowUp") return;
   event.preventDefault();
   goUp();
 });

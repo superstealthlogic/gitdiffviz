@@ -534,6 +534,14 @@ body {
   font-size: 13px;
 }
 
+.diff-scroll-label {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  text-anchor: end;
+}
+
 .node-meta,
 .breadcrumb,
 .lane-title {
