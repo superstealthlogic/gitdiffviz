@@ -6,7 +6,7 @@ use std::{
     process::Command,
     sync::Mutex,
 };
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, UserAttentionType};
 
 const SAMPLE_SCENE: &str = include_str!("../../../../examples/sample-scene.json");
 
@@ -21,6 +21,11 @@ struct RenderRequest {
     base: String,
     target: String,
     timeline: bool,
+}
+
+#[derive(Deserialize)]
+struct WatchAlertRequest {
+    count: u32,
 }
 
 #[derive(Serialize)]
@@ -159,6 +164,37 @@ fn render_repository(
     Ok(json)
 }
 
+#[tauri::command]
+fn raise_watch_alert(app: AppHandle, request: WatchAlertRequest) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Could not find main window.".to_string())?;
+    window
+        .request_user_attention(Some(UserAttentionType::Informational))
+        .map_err(|error| format!("Could not request user attention: {error}"))?;
+    window
+        .set_title(&format!(
+            "({}) Git Visualization Diff",
+            request.count.max(1)
+        ))
+        .map_err(|error| format!("Could not set window title: {error}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn clear_watch_alert(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Could not find main window.".to_string())?;
+    window
+        .request_user_attention(None)
+        .map_err(|error| format!("Could not clear user attention: {error}"))?;
+    window
+        .set_title("Git Visualization Diff")
+        .map_err(|error| format!("Could not reset window title: {error}"))?;
+    Ok(())
+}
+
 fn validate_repo(repo: &str) -> Result<PathBuf, String> {
     let repo = PathBuf::from(repo);
     let output = Command::new("git")
@@ -256,7 +292,9 @@ fn main() {
             choose_repository,
             list_commits,
             load_scene,
-            render_repository
+            render_repository,
+            raise_watch_alert,
+            clear_watch_alert
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

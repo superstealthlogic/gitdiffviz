@@ -39,7 +39,10 @@
         <input id="timelineInput" type="checkbox" />
         Timeline
       </label>
-      <button id="waitOnButton" type="button">Wait On</button>
+      <button id="waitOnButton" class="watch-button" type="button">
+        <span id="waitOnButtonLabel">Wait On</span>
+        <span id="waitOnBadge" class="watch-badge" hidden>0</span>
+      </button>
       <button id="renderRepoButton" type="button">Render</button>
       <span id="nativeStatus" role="status"></span>
     </section>

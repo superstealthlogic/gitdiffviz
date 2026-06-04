@@ -17,6 +17,8 @@ const baseSelect = document.getElementById("baseSelect");
 const targetSelect = document.getElementById("targetSelect");
 const timelineInput = document.getElementById("timelineInput");
 const waitOnButton = document.getElementById("waitOnButton");
+const waitOnButtonLabel = document.getElementById("waitOnButtonLabel");
+const waitOnBadge = document.getElementById("waitOnBadge");
 const renderRepoButton = document.getElementById("renderRepoButton");
 const nativeStatus = document.getElementById("nativeStatus");
 const repositoryPrompt = document.getElementById("repositoryPrompt");
@@ -47,10 +49,16 @@ let waitOnTimer = null;
 let waitOnBaseHash = "";
 let waitOnLatestHash = "";
 let waitOnRendering = false;
+let unseenWatchCommitCount = 0;
 const waitOnPollMs = 60_000;
 
 function tauriInvoke(command, args = {}) {
   return globalThis.__TAURI__?.core?.invoke?.(command, args) ?? null;
+}
+
+function invokeOptional(command, args = {}) {
+  const result = tauriInvoke(command, args);
+  if (result?.catch) result.catch(() => {});
 }
 
 function isTauriHost() {
@@ -852,6 +860,48 @@ function updateRepositoryPrompt() {
   repositoryPrompt.hidden = Boolean(selectedRepo);
 }
 
+function setWaitOnButtonText(text) {
+  if (waitOnButtonLabel) {
+    waitOnButtonLabel.textContent = text;
+  } else {
+    waitOnButton.textContent = text;
+  }
+}
+
+function updateWatchBadge() {
+  if (!waitOnBadge) return;
+  waitOnBadge.hidden = unseenWatchCommitCount <= 0;
+  waitOnBadge.textContent = unseenWatchCommitCount > 99 ? "99+" : String(unseenWatchCommitCount);
+  waitOnButton.title = unseenWatchCommitCount > 0
+    ? `${unseenWatchCommitCount} new commit${unseenWatchCommitCount === 1 ? "" : "s"} since the app was focused`
+    : "Watch for new commits";
+}
+
+function clearWatchAlert() {
+  unseenWatchCommitCount = 0;
+  updateWatchBadge();
+  invokeOptional("clear_watch_alert");
+}
+
+function countNewCommitsSince(commits, previousHead) {
+  if (!previousHead) return 0;
+  const previousIndex = commits.findIndex((commit) => commit.hash === previousHead);
+  return previousIndex > 0 ? previousIndex : 1;
+}
+
+function noteWatchCommits(count) {
+  if (count <= 0) return;
+  unseenWatchCommitCount += count;
+  updateWatchBadge();
+  if (!document.hasFocus()) {
+    invokeOptional("raise_watch_alert", {
+      request: {
+        count: unseenWatchCommitCount
+      }
+    });
+  }
+}
+
 function applyDocument(loadedDocument) {
   if (loadedDocument.kind === "timeline" || Array.isArray(loadedDocument.steps)) {
     timelineDocument = loadedDocument;
@@ -1012,11 +1062,12 @@ function setSelectValue(select, value) {
   if (index >= 0) select.selectedIndex = index;
 }
 
-async function renderWaitOnTimeline(targetHash) {
+async function renderWaitOnTimeline(targetHash, newCommitCount = 1) {
   if (!selectedRepo || !waitOnBaseHash || waitOnRendering) return;
   waitOnRendering = true;
   renderRepoButton.disabled = true;
   waitOnButton.disabled = true;
+  noteWatchCommits(newCommitCount);
   nativeStatus.textContent = "New commits found. Rendering timeline...";
   try {
     const loadedDocument = await tauriInvoke("render_repository", {
@@ -1056,7 +1107,7 @@ async function pollWaitOn() {
     const head = latestCommits[0]?.hash ?? "";
     setSelectValue(targetSelect, head);
     if (head && head !== waitOnLatestHash && head !== waitOnBaseHash) {
-      await renderWaitOnTimeline(head);
+      await renderWaitOnTimeline(head, countNewCommitsSince(latestCommits, waitOnLatestHash));
       return;
     }
     nativeStatus.textContent = "Watching. No new commits.";
@@ -1072,7 +1123,8 @@ function startWaitOn() {
   }
   waitOnBaseHash = commitOptions[0].hash;
   waitOnLatestHash = waitOnBaseHash;
-  waitOnButton.textContent = "Stop";
+  clearWatchAlert();
+  setWaitOnButtonText("Stop");
   timelineInput.checked = true;
   setSelectValue(baseSelect, waitOnBaseHash);
   setSelectValue(targetSelect, waitOnBaseHash);
@@ -1091,7 +1143,8 @@ function stopWaitOn(message = "Stopped watching.") {
   waitOnBaseHash = "";
   waitOnLatestHash = "";
   waitOnRendering = false;
-  waitOnButton.textContent = "Wait On";
+  clearWatchAlert();
+  setWaitOnButtonText("Wait On");
   if (message && selectedRepo) nativeStatus.textContent = message;
 }
 
@@ -1291,6 +1344,11 @@ window.addEventListener("keydown", (event) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(tagName)) return;
   event.preventDefault();
   goUp();
+});
+
+window.addEventListener("focus", clearWatchAlert);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") clearWatchAlert();
 });
 
 boot().catch((error) => {
