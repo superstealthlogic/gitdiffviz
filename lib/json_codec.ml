@@ -562,8 +562,12 @@ let timeline_step_to_yojson (step : timeline_step) =
        ("document", visualization_document_to_yojson step.document);
      ]
     @ option_field "targetDate" (fun value -> `String value) step.target_date
+    @ option_field "targetTimestamp" (fun value -> `String value)
+        step.target_timestamp
     @ option_field "targetShortHash" (fun value -> `String value)
-        step.target_short_hash)
+        step.target_short_hash
+    @ option_field "targetMessage" (fun value -> `String value)
+        step.target_message)
 
 let timeline_document_to_yojson (document : timeline_document) =
   `Assoc

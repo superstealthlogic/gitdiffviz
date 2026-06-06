@@ -100,7 +100,9 @@ type timeline_step = {
   target : string;
   label : string;
   target_date : string option;
+  target_timestamp : string option;
   target_short_hash : string option;
+  target_message : string option;
   document : visualization_document;
 }
 

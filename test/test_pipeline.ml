@@ -542,7 +542,11 @@ let test_build_timeline_smoke () =
       let first = List.hd timeline.steps in
       Alcotest.(check int) "first step index" 0 first.index;
       Alcotest.(check int) "first step changed files" 1
-        first.document.metrics.changed_files
+        first.document.metrics.changed_files;
+      Alcotest.(check (option string)) "first step message" (Some "middle")
+        first.target_message;
+      Alcotest.(check bool) "first step timestamp" true
+        (Option.is_some first.target_timestamp)
 
 let scene_has_changed_symbol name document =
   List.exists

@@ -32,6 +32,7 @@ struct CommitOption {
     short_hash: String,
     date: String,
     subject: String,
+    message: String,
     label: String,
 }
 
@@ -51,8 +52,8 @@ fn list_commits(repo: String) -> Result<Vec<CommitOption>, String> {
         .args([
             "log",
             "--max-count=300",
-            "--date=short",
-            "--pretty=format:%H%x09%h%x09%cs%x09%s",
+            "--date=format-local:%Y-%m-%d %H:%M",
+            "--pretty=format:%H%x1f%h%x1f%ad%x1f%s%x1f%B%x1e",
         ])
         .output()
         .map_err(|error| format!("Could not run git log: {error}"))?;
@@ -63,19 +64,21 @@ fn list_commits(repo: String) -> Result<Vec<CommitOption>, String> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let commits = stdout
-        .lines()
-        .filter_map(|line| {
-            let mut parts = line.splitn(4, '\t');
-            let hash = parts.next()?.to_string();
+        .split('\x1e')
+        .filter_map(|record| {
+            let mut parts = record.trim_matches('\n').splitn(5, '\x1f');
+            let hash = parts.next()?.trim().to_string();
             let short_hash = parts.next()?.to_string();
             let date = parts.next()?.to_string();
             let subject = parts.next().unwrap_or("").to_string();
+            let message = parts.next().unwrap_or("").trim().to_string();
             let label = format!("{short_hash}  {date}  {subject}");
             Some(CommitOption {
                 hash,
                 short_hash,
                 date,
                 subject,
+                message,
                 label,
             })
         })

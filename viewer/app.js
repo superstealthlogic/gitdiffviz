@@ -22,6 +22,9 @@ const waitOnBadge = document.getElementById("waitOnBadge");
 const renderRepoButton = document.getElementById("renderRepoButton");
 const nativeStatus = document.getElementById("nativeStatus");
 const repositoryPrompt = document.getElementById("repositoryPrompt");
+const commitHeader = document.getElementById("commitHeader");
+const commitMetadata = document.getElementById("commitMetadata");
+const commitMessage = document.getElementById("commitMessage");
 const timelinePanel = document.getElementById("timelinePanel");
 const timelineSlider = document.getElementById("timelineSlider");
 const timelineTicks = document.getElementById("timelineTicks");
@@ -874,6 +877,7 @@ function renderScene() {
     clearScene();
     return;
   }
+  updateCommitHeader();
   svg.style.opacity = "1";
   svg.innerHTML = "";
   updateSceneZoom();
@@ -927,7 +931,30 @@ function clearScene() {
   zoomSummaryEl.textContent = "Render a repository to inspect its structure.";
   upButton.disabled = true;
   timelinePanel.hidden = true;
+  commitHeader.hidden = true;
   updateRepositoryPrompt();
+}
+
+function activeTargetCommit() {
+  const step = timelineDocument?.steps?.[timelineStepIndex];
+  const target = step?.target ?? sceneDocument?.comparison?.target;
+  const listedCommit = commitOptions.find((commit) => commit.hash === target);
+  return {
+    hash: target ?? listedCommit?.hash ?? "",
+    timestamp: step?.targetTimestamp ?? listedCommit?.date ?? step?.targetDate ?? "",
+    message: step?.targetMessage ?? listedCommit?.message ?? listedCommit?.subject ?? ""
+  };
+}
+
+function updateCommitHeader() {
+  if (!sceneDocument) {
+    commitHeader.hidden = true;
+    return;
+  }
+  const commit = activeTargetCommit();
+  commitMetadata.textContent = [commit.timestamp, commit.hash].filter(Boolean).join("  ");
+  commitMessage.textContent = commit.message || "Commit message unavailable";
+  commitHeader.hidden = false;
 }
 
 function setWaitOnButtonText(text) {
@@ -1037,6 +1064,7 @@ async function chooseRepository() {
     populateCommitSelects();
     validateSelectedCommits();
     nativeStatus.textContent = `${commitOptions.length} commits loaded.`;
+    if (sceneDocument) updateCommitHeader();
   } catch (error) {
     commitOptions = [];
     clearCommitSelects();

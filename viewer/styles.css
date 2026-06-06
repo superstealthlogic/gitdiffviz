@@ -346,6 +346,31 @@ body {
   font-size: 13px;
 }
 
+.commit-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+
+.commit-header[hidden] {
+  display: none;
+}
+
+.commit-metadata {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.commit-message {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .zoom-controls {
   display: flex;
   gap: 6px;

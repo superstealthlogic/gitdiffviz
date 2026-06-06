@@ -51,12 +51,25 @@ let short_commit commit =
   if String.length commit <= 8 then commit else String.sub commit 0 8
 
 let commit_metadata ~repo_root commit =
-  match run_git_capture repo_root [ "show"; "-s"; "--format=%h%x09%cs"; commit ] with
-  | Error _ -> (None, None)
+  match
+    run_git_capture repo_root
+      [
+        "show";
+        "-s";
+        "--date=format-local:%Y-%m-%d %H:%M";
+        "--format=%h%x09%cs%x09%ad%x09%B";
+        commit;
+      ]
+  with
+  | Error _ -> (None, None, None, None)
   | Ok output -> (
       match String.trim output |> String.split_on_char '\t' with
-      | short_hash :: date :: _ -> (Some short_hash, Some date)
-      | _ -> (None, None))
+      | short_hash :: date :: timestamp :: message_parts ->
+          ( Some short_hash,
+            Some date,
+            Some timestamp,
+            Some (String.concat "\t" message_parts) )
+      | _ -> (None, None, None, None))
 
 let pairs commits =
   let rec loop acc = function
@@ -147,7 +160,7 @@ let build ~repo_root ~base ~target ~path_filter =
                             }
                     in
                     let document = scene_for_diff ?semantic_document diff_document in
-                let target_short_hash, target_date =
+                let target_short_hash, target_date, target_timestamp, target_message =
                   commit_metadata ~repo_root target
                 in
                 Ok
@@ -157,7 +170,9 @@ let build ~repo_root ~base ~target ~path_filter =
                     target;
                     label = short_commit base ^ " -> " ^ short_commit target;
                     target_date;
+                    target_timestamp;
                     target_short_hash;
+                    target_message;
                     document;
                   })
           in
