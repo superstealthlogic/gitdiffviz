@@ -1,6 +1,6 @@
 # Git Visualization Diff
 
-This is the OCaml port scaffold for `visualization-diff`.
+![image](Screenshot.v0.4.png)
 
 See [Tutorial.md](Tutorial.md) for a start-to-finish walkthrough. It uses
 `getsentry/sentry-cocoa` as an example repository, but the workflow is generic.
