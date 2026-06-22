@@ -10,6 +10,34 @@ The project keeps a hard boundary between:
 - OCaml analysis code: diff documents, repository hierarchy, semantic joins, and scene JSON.
 - JS/TS renderer code: interactive rendering, layout, zooming, and host integration.
 
+## Install and build
+
+Prerequisites are Git, a C compiler, `pkg-config`, and opam 2.x. Node.js is only
+needed to run the browser viewer; it is not needed to build or test the OCaml
+backend.
+
+From a fresh clone, create a project-local switch and install all build and test
+dependencies:
+
+```bash
+opam switch create . 5.2.1
+eval "$(opam env)"
+opam install . --deps-only --with-test
+opam exec -- dune build
+opam exec -- dune runtest
+```
+
+The `tree-sitter` OCaml package is not in the default opam repository. This
+project's opam metadata pins the tested upstream revision automatically. When
+opam asks whether to pin `tree-sitter.dev`, answer `y`.
+
+If you want to use an existing switch instead, omit the first two commands.
+The remaining commands install dependencies into the currently selected switch.
+
+If a previous install failed with `Library "tree-sitter.run" not found`, update
+the clone and rerun `opam install . --deps-only --with-test`; the dependency and
+its upstream pin are now part of the package metadata.
+
 Current status:
 
 - Core OCaml types are in place.
@@ -128,5 +156,5 @@ scripts/render-repo-diffs.sh --repo /path/to/repo --base HEAD~3 --target HEAD --
 Timeline mode shows tick marks for each commit step, 8-character target commit
 hashes, and endpoint commit dates next to the right-side slider.
 
-On this machine, use `opam exec -- dune ...` so dune resolves to the opam
-switch version rather than the older Homebrew binary.
+Use `opam exec -- dune ...` so Dune and its libraries consistently come from
+the selected opam switch.

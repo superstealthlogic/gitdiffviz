@@ -17,5 +17,4 @@
   (flags
    -std=c99
    -fPIC
-   -I %{env:TREESITTER_INCDIR=/usr/local/include}
-   -I %{env:GVD_INCDIR=/Users/jcarlson/Projects/GitVisualizationDiff/lib})))
+   -I %{project_root}/lib)))

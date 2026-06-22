@@ -2,6 +2,14 @@
 
 (name git_visualization_diff)
 
+(authors "Jared Carlson")
+
+(maintainers "Jared Carlson <jared.carlson23@gmail.com>")
+
+(homepage "https://github.com/superstealthlogic/gitdiffviz")
+
+(bug_reports "https://github.com/superstealthlogic/gitdiffviz/issues")
+
 (generate_opam_files true)
 
 (package
@@ -12,4 +20,5 @@
   dune
   yojson
   cmdliner
-  alcotest))
+  (alcotest :with-test)
+  tree-sitter))

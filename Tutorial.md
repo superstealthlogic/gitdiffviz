@@ -2,6 +2,11 @@
 
 This walkthrough renders diffs from a local git repository using the OCaml backend and JS/SVG viewer. It uses `getsentry/sentry-cocoa` as an example repository, but the same commands work for any local checkout.
 
+Before starting, complete the fresh-clone installation in
+[README.md](README.md#install-and-build). In particular, use
+`opam install . --deps-only --with-test`; it installs the pinned OCaml
+tree-sitter runtime required by the semantic extractors.
+
 The current semantic adapters cover Swift, C, C++, and C/C++ headers. Objective-C `.m` and Objective-C++ `.mm` files will still appear at the file level in the diff scene, but they do not yet get syntax-level semantic symbols.
 
 ## 1. Prepare a Repository

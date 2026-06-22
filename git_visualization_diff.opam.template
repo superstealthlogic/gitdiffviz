@@ -1,0 +1,6 @@
+pin-depends: [
+  [
+    "tree-sitter.dev"
+    "git+https://github.com/semgrep/ocaml-tree-sitter-core.git#d521f0a0791d94f4442cf9be08322f6aabce20d6"
+  ]
+]

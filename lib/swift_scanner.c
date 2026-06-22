@@ -926,4 +926,3 @@ bool tree_sitter_swift_external_scanner_scan(
 
     return false;
 }
-
