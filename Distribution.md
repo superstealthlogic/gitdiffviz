@@ -4,6 +4,11 @@ The native application is packaged by Tauri. A release build produces
 `Git Visualization Diff.app` and a disk image under
 `native/tauri/src-tauri/target/release/bundle/`.
 
+## Homebrew
+
+Homebrew distribution might be best. Noting here to look into
+over the next week.
+
 ## Prerequisites
 
 - macOS with Xcode Command Line Tools (`xcode-select --install`)
