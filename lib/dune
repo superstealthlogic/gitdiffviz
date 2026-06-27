@@ -17,4 +17,4 @@
   (flags
    -std=c99
    -fPIC
-   -I %{project_root}/lib)))
+   -I%{project_root}/lib)))
