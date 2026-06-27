@@ -78,7 +78,11 @@ fi
 if [[ "$local_switch" == "1" ]]; then
   if [[ ! -d _opam ]]; then
     echo "Creating local opam switch with OCaml $ocaml_version..."
-    opam switch create . "$ocaml_version" --yes
+    switch_create_args=(switch create . "$ocaml_version" --deps-only --yes)
+    if [[ "$with_test" == "1" ]]; then
+      switch_create_args+=(--with-test)
+    fi
+    opam "${switch_create_args[@]}"
   else
     echo "Using existing local opam switch in ./_opam"
   fi

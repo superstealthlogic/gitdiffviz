@@ -30,7 +30,7 @@ run `scripts/setup-opam-deps.sh --no-local-switch`.
 The equivalent manual commands are:
 
 ```bash
-opam switch create . 5.2.1
+opam switch create . 5.2.1 --deps-only --with-test
 eval "$(opam env)"
 opam install . --deps-only --with-test
 opam exec -- dune build
@@ -44,9 +44,21 @@ opam asks whether to pin `tree-sitter.dev`, answer `y`.
 If you want to use an existing switch instead, omit the first two commands.
 The remaining commands install dependencies into the currently selected switch.
 
+The `--deps-only` flag on `opam switch create` matters. Without it, opam may
+try to install this checkout as a package while creating the switch, before the
+pinned tree-sitter dependency is installed.
+
 If a previous install failed with `Library "tree-sitter.run" not found`, update
 the clone and rerun `opam install . --deps-only --with-test`; the dependency and
 its upstream pin are now part of the package metadata.
+
+If the failure happened while creating the local switch, remove the failed
+local switch first and rerun the setup script:
+
+```bash
+rm -rf _opam
+scripts/setup-opam-deps.sh --runtest
+```
 
 That error means Dune found this checkout but the active opam switch does not
 have the OCaml tree-sitter runtime installed. Run Dune through `opam exec` after
