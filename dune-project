@@ -15,6 +15,7 @@
 (package
  (name git_visualization_diff)
  (synopsis "Typed OCaml backend for git diff visualization scene generation")
+ (license MIT)
  (depends
   ocaml
   dune

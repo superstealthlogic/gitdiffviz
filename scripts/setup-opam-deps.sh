@@ -26,6 +26,32 @@ local_switch="1"
 with_test="1"
 run_build="1"
 run_tests="0"
+tree_sitter_pin="git+https://github.com/semgrep/ocaml-tree-sitter-core.git#d521f0a0791d94f4442cf9be08322f6aabce20d6"
+
+install_tree_sitter_runtime() {
+  local opam_prefix
+  local tree_sitter_source
+
+  opam_prefix="$(opam var prefix)"
+  tree_sitter_source="$opam_prefix/.opam-switch/sources/tree-sitter"
+
+  if [[ ! -d "$tree_sitter_source" ]]; then
+    echo "Missing pinned tree-sitter source directory: $tree_sitter_source" >&2
+    return 1
+  fi
+
+  (
+    cd "$tree_sitter_source"
+    STRIP="${STRIP:-true}" scripts/install-tree-sitter-lib --prefix "$opam_prefix"
+  )
+
+  TREESITTER_INCDIR="$opam_prefix/include" \
+    TREESITTER_LIBDIR="$opam_prefix/lib" \
+    "$opam_prefix/bin/dune" install tree-sitter \
+      --root "$tree_sitter_source" \
+      --prefix "$opam_prefix" \
+      --display short
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -101,6 +127,29 @@ fi
 echo
 echo "Installing project dependencies..."
 opam "${install_args[@]}"
+
+if ! opam exec -- ocamlfind query tree-sitter.run >/dev/null 2>&1; then
+  echo
+  echo "tree-sitter.run is missing; pinning and installing the tested tree-sitter runtime..."
+  opam pin add tree-sitter.dev "$tree_sitter_pin" --no-action --yes
+  if opam list --installed --short tree-sitter | grep -qx tree-sitter; then
+    opam reinstall tree-sitter --yes
+  else
+    opam install tree-sitter --yes
+  fi
+  install_tree_sitter_runtime
+fi
+
+if ! opam exec -- ocamlfind query tree-sitter.run >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+
+tree-sitter.run is still not available in the selected opam switch.
+Try removing the local switch and rerunning this script:
+  rm -rf _opam
+  scripts/setup-opam-deps.sh --runtest
+EOF
+  exit 1
+fi
 
 if [[ "$run_build" == "1" ]]; then
   echo

@@ -41,6 +41,11 @@ The `tree-sitter` OCaml package is not in the default opam repository. This
 project's opam metadata pins the tested upstream revision automatically. When
 opam asks whether to pin `tree-sitter.dev`, answer `y`.
 
+That upstream opam package installs its dependencies but does not install the
+`tree-sitter.bindings` and `tree-sitter.run` runtime libraries by itself. The
+setup script detects that state and installs the runtime from the pinned source
+into the selected switch.
+
 If you want to use an existing switch instead, omit the first two commands.
 The remaining commands install dependencies into the currently selected switch.
 

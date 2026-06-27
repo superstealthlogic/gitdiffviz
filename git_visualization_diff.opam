@@ -3,6 +3,7 @@ opam-version: "2.0"
 synopsis: "Typed OCaml backend for git diff visualization scene generation"
 maintainer: ["Jared Carlson <jared.carlson23@gmail.com>"]
 authors: ["Jared Carlson"]
+license: "MIT"
 homepage: "https://github.com/superstealthlogic/gitdiffviz"
 bug-reports: "https://github.com/superstealthlogic/gitdiffviz/issues"
 depends: [
