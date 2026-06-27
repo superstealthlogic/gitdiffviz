@@ -16,8 +16,18 @@ Prerequisites are Git, a C compiler, `pkg-config`, and opam 2.x. Node.js is only
 needed to run the browser viewer; it is not needed to build or test the OCaml
 backend.
 
-From a fresh clone, create a project-local switch and install all build and test
-dependencies:
+From a fresh clone, the shortest setup path is:
+
+```bash
+scripts/setup-opam-deps.sh --runtest
+```
+
+The script creates a project-local opam switch if `./_opam` does not already
+exist, installs the pinned OCaml dependencies, runs `dune build`, and runs tests
+when `--runtest` is passed. To use your currently selected opam switch instead,
+run `scripts/setup-opam-deps.sh --no-local-switch`.
+
+The equivalent manual commands are:
 
 ```bash
 opam switch create . 5.2.1
@@ -37,6 +47,14 @@ The remaining commands install dependencies into the currently selected switch.
 If a previous install failed with `Library "tree-sitter.run" not found`, update
 the clone and rerun `opam install . --deps-only --with-test`; the dependency and
 its upstream pin are now part of the package metadata.
+
+That error means Dune found this checkout but the active opam switch does not
+have the OCaml tree-sitter runtime installed. Run Dune through `opam exec` after
+installing dependencies so it uses the same switch:
+
+```bash
+opam exec -- dune build
+```
 
 Current status:
 
