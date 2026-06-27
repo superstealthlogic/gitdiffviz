@@ -47,6 +47,13 @@ install_tree_sitter_runtime() {
 
   TREESITTER_INCDIR="$opam_prefix/include" \
     TREESITTER_LIBDIR="$opam_prefix/lib" \
+    "$opam_prefix/bin/dune" build \
+      --root "$tree_sitter_source" \
+      --display short \
+      @install
+
+  TREESITTER_INCDIR="$opam_prefix/include" \
+    TREESITTER_LIBDIR="$opam_prefix/lib" \
     "$opam_prefix/bin/dune" install tree-sitter \
       --root "$tree_sitter_source" \
       --prefix "$opam_prefix" \
