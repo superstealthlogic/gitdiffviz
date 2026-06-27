@@ -10,6 +10,23 @@ The project keeps a hard boundary between:
 - OCaml analysis code: diff documents, repository hierarchy, semantic joins, and scene JSON.
 - JS/TS renderer code: interactive rendering, layout, zooming, and host integration.
 
+## Running the GUI
+
+Once installed and built, you can:
+
+```bash
+$ cd native/tauri/src-tauri 
+$ cargo tauri dev
+     Running DevCommand (`cargo  run --no-default-features --color always --`)
+        Info Watching /Users/.../Projects/GitVisualizationDiff/native/tauri/src-tauri for changes...
+   Compiling git-visualization-diff-app v0.4.0 (/Users/.../Projects/GitVisualizationDiff/native/tauri/src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.65s
+     Running `target/debug/git-visualization-diff-app`
+```
+
+Which will give you a UI to run; simply browse to a folder and then either "watch" it (for vide coding or agentic sessions),
+or you can manually diff commits. 
+
 ## Install and build
 
 Prerequisites are Git, a C compiler, `pkg-config`, and opam 2.x. Node.js is only
@@ -17,6 +34,12 @@ needed to run the browser viewer; it is not needed to build or test the OCaml
 backend.
 
 From a fresh clone, the shortest setup path is:
+
+```bash
+scripts/setup-opam-deps.sh
+```
+
+or (more fully)
 
 ```bash
 scripts/setup-opam-deps.sh --runtest
