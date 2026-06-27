@@ -17,4 +17,9 @@
   (flags
    -std=c99
    -fPIC
-   -I%{project_root}/lib)))
+   -I%{project_root}/lib)
+  (extra_deps
+   tree_sitter/alloc.h
+   tree_sitter/api.h
+   tree_sitter/array.h
+   tree_sitter/parser.h)))
