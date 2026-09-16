@@ -69,6 +69,16 @@ That upstream opam package installs its dependencies but does not install the
 setup script detects that state and installs the runtime from the pinned source
 into the selected switch.
 
+The pinned revision is `c4baff8`, the upstream commit that migrated its CLI
+binaries to the cmdliner 2.x API. Earlier revisions call `Term.info` and
+`Term.eval`, which cmdliner removed in 1.1, so they cannot build in a switch
+that also satisfies this project's own `cmdliner >= 1.1.0` requirement. When
+bumping the pin, stay at or after that commit.
+
+Upstream `main` moved the C library download and build into its dune rules.
+That needs network access during `opam install`, which opam's build sandbox
+denies, so this project does not track `main` yet.
+
 If you want to use an existing switch instead, omit the first two commands.
 The remaining commands install dependencies into the currently selected switch.
 
