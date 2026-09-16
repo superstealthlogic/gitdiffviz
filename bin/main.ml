@@ -104,17 +104,12 @@ let extract_diff repo_root base target path_filter out_path =
   in
   result_to_exit result
 
-let recognized_semantic_path path =
-  match Language.detect_by_path path with
-  | "c" | "cpp" | "rust" | "swift" -> true
-  | _ -> false
-
 let semantic_candidate_files diff_document =
   diff_document.Diff_types.files
   |> List.filter_map (fun (file : Diff_types.diff_file_entry) ->
          match file.status with
          | Deleted -> None
-         | _ when recognized_semantic_path file.path -> Some file.path
+         | _ when Parser_registry.supports_path file.path -> Some file.path
          | _ -> None)
 
 let scene_for_diff repo_root diff_document =
@@ -220,7 +215,7 @@ let extract_diff_cmd =
 
 let extract_semantics_cmd =
   let doc =
-    "Extract semantic input JSON for recognized source files. Symbol extractors are placeholders for now."
+    "Extract semantic input JSON for recognized source files."
   in
   let info = Cmd.info "extract-semantics" ~doc in
   Cmd.v info Term.(ret (const extract_semantics $ repo_arg $ files_arg $ out_arg))

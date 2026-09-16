@@ -20,6 +20,7 @@
   ocaml
   dune
   yojson
-  cmdliner
+  ; bin/main.ml uses the Cmd.* API introduced in cmdliner 1.1.
+  (cmdliner (>= 1.1.0))
   (alcotest :with-test)
   tree-sitter))

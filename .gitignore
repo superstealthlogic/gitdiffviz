@@ -1,4 +1,5 @@
 _build
+_opam
 resume.dat
 native/tauri/node_modules/
 native/tauri/src-tauri/binaries/

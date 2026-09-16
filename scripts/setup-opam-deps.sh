@@ -26,7 +26,7 @@ local_switch="1"
 with_test="1"
 run_build="1"
 run_tests="0"
-tree_sitter_pin="git+https://github.com/semgrep/ocaml-tree-sitter-core.git#d521f0a0791d94f4442cf9be08322f6aabce20d6"
+tree_sitter_pin="git+https://github.com/semgrep/ocaml-tree-sitter-core.git#c4baff8d83b2e1f83f247acb11d0c9dafa5e48f7"
 
 install_tree_sitter_runtime() {
   local opam_prefix

@@ -69,6 +69,16 @@ That upstream opam package installs its dependencies but does not install the
 setup script detects that state and installs the runtime from the pinned source
 into the selected switch.
 
+The pinned revision is `c4baff8`, the upstream commit that migrated its CLI
+binaries to the cmdliner 2.x API. Earlier revisions call `Term.info` and
+`Term.eval`, which cmdliner removed in 1.1, so they cannot build in a switch
+that also satisfies this project's own `cmdliner >= 1.1.0` requirement. When
+bumping the pin, stay at or after that commit.
+
+Upstream `main` moved the C library download and build into its dune rules.
+That needs network access during `opam install`, which opam's build sandbox
+denies, so this project does not track `main` yet.
+
 If you want to use an existing switch instead, omit the first two commands.
 The remaining commands install dependencies into the currently selected switch.
 
@@ -107,8 +117,10 @@ Current status:
 - Rust semantic extraction is tree-sitter-backed for basic syntax-level symbols.
 - C/C++ semantic extraction is tree-sitter-backed for basic syntax-level symbols.
 - Swift semantic extraction is tree-sitter-backed for basic syntax-level symbols.
+- Python semantic extraction is tree-sitter-backed for basic syntax-level symbols.
+- TypeScript and JavaScript semantic extraction is tree-sitter-backed for basic syntax-level symbols, including JSX.
 - Adapter output now shares common symbol ID, span, sort, and generic metadata helpers.
-- Semantic extraction has a golden JSON snapshot covering Rust, C/C++, and Swift fixtures.
+- Semantic extraction has a golden JSON snapshot covering Rust, C/C++, Swift, Python, TypeScript, TSX, and JavaScript fixtures.
 - Semantic joins use precise hunk-line overlap when available, including deletion-only projection into current-file symbol spans.
 - Semantic joins preserve symbol nodes for deleted files and can attach semantic input from a renamed file's old path to the current file node.
 - A JS/SVG viewer can load OCaml scene JSON through `/scene.json`; diff rows use Highlight.js when available, with a lightweight fallback highlighter.
@@ -143,6 +155,56 @@ Swift extraction currently recognizes:
 The Swift grammar is vendored from `tree-sitter-swift` under
 `vendor/tree-sitter-swift`. The generated parser is produced with the local
 tree-sitter 0.22.6 CLI so it matches the installed OCaml tree-sitter runtime.
+
+Python extraction currently recognizes:
+
+- `class` declarations, including base-class hints (`ABC`, `Protocol`, `Enum`,
+  `TypedDict`, `NamedTuple`, `BaseModel`, `Exception`)
+- module-level functions, methods, and functions nested inside other functions
+- `@property`, `@staticmethod`, and `@classmethod` as distinct member kinds
+- module-level `UPPER_SNAKE` constants and class-level attributes
+- PEP 695 `type` aliases and PEP 695 type parameters, tagged `generic`
+- `async def`, tagged `async`
+- `@abstractmethod`, `@dataclass`, `@contextmanager`, and `@override` hints
+- `test_*` functions, `Test*` classes, and `@pytest.*` decorators as
+  test-oriented semantic hints
+
+A decorated definition's span starts at its first decorator, so a diff that
+only touches `@app.route(...)` still maps to the handler it decorates.
+
+The Python grammar is vendored from `tree-sitter-python` under
+`vendor/tree-sitter-python`.
+
+TypeScript and JavaScript extraction currently recognizes:
+
+- `class`, `abstract class`, `interface`, `enum`, `namespace`, and `module`
+- `type` aliases, and `type_parameters` tagged `generic`
+- functions, generator functions, ambient `declare function` signatures, and
+  arrow functions bound to module-level or namespace-level names
+- constructors, methods, getters, setters, class fields, `abstract` members,
+  and interface property/method signatures
+- arrow-function class fields, reported as methods
+- `static`, `readonly`, `abstract`, `override`, and `async` modifiers as
+  semantic hints
+- React components: capitalized functions and arrow functions whose body
+  contains JSX, tagged `react_component`
+- Angular/NestJS decorators (`@Component`, `@Injectable`, `@Controller`,
+  `@Module`, `@Directive`, `@Pipe`), tagged `decorated`
+- jest/vitest/mocha `describe`/`it`/`test` blocks, named from their string
+  argument and nested as suites and cases
+
+`export` and `declare` are transparent wrappers: the symbol they wrap keeps the
+wrapper's span, so a diff touching the `export` line lands on the declaration.
+Members that appear in type position — an inline prop type, or a type argument
+in `extends Component<{ label: string }>` — are not reported as members of the
+enclosing class or function.
+
+The TypeScript grammar is vendored from `tree-sitter-typescript` under
+`vendor/tree-sitter-typescript`. That grammar ships two dialects and both are
+built: `typescript` accepts `<T>expr` type assertions and rejects JSX, while
+`tsx` accepts JSX and reads `<T>` as a JSX tag. Plain JavaScript never uses
+`<T>expr`, so `.ts`, `.mts`, and `.cts` use the `typescript` dialect and
+`.tsx`, `.jsx`, `.js`, `.mjs`, and `.cjs` use `tsx`.
 
 Example:
 

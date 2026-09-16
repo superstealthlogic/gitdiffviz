@@ -10,7 +10,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.16"}
   "yojson"
-  "cmdliner"
+  "cmdliner" {>= "1.1.0"}
   "alcotest" {with-test}
   "tree-sitter"
   "odoc" {with-doc}
@@ -32,6 +32,6 @@ build: [
 pin-depends: [
   [
     "tree-sitter.dev"
-    "git+https://github.com/semgrep/ocaml-tree-sitter-core.git#d521f0a0791d94f4442cf9be08322f6aabce20d6"
+    "git+https://github.com/semgrep/ocaml-tree-sitter-core.git#c4baff8d83b2e1f83f247acb11d0c9dafa5e48f7"
   ]
 ]

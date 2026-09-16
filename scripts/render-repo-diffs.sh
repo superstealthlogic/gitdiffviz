@@ -111,8 +111,9 @@ echo
 echo "Collecting semantic files..."
 (
   cd "$repo"
+  # Keep in sync with Parser_registry.supports_path.
   git diff --name-only --diff-filter=ACMRT "$base" "$target" \
-    | grep -E '\.(swift|c|h|cc|cpp|cxx|hh|hpp)$' \
+    | grep -E '\.(rs|swift|c|h|cc|cpp|cxx|hh|hpp|py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs)$' \
     > "$semantic_files" || true
 )
 
@@ -122,7 +123,11 @@ echo "Semantic candidate files: $semantic_count"
 if [[ "$semantic_count" -gt 0 ]]; then
   echo
   echo "Extracting semantics..."
-  mapfile -t files < "$semantic_files"
+  # `mapfile` needs bash 4; macOS still ships bash 3.2.
+  files=()
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files+=("$file")
+  done < "$semantic_files"
   opam exec -- dune exec git-visualization-diff -- extract-semantics \
     --repo "$repo" \
     "${files[@]}" \
@@ -135,7 +140,7 @@ if [[ "$semantic_count" -gt 0 ]]; then
     --semantic "$semantics_json" \
     --out "$scene_json"
 else
-  echo "No current Swift/C/C++ files found in the diff; building file-level scene."
+  echo "No current files with a semantic extractor in the diff; building file-level scene."
   semantics_json=""
   opam exec -- dune exec git-visualization-diff -- build-scene \
     --diff "$diff_json" \

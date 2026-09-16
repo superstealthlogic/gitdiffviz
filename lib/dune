@@ -13,7 +13,15 @@
    cpp_scanner
    swift_tree_sitter_bindings
    swift_parser
-   swift_scanner)
+   swift_scanner
+   python_tree_sitter_bindings
+   python_parser
+   python_scanner
+   typescript_tree_sitter_bindings
+   typescript_parser
+   typescript_scanner
+   tsx_parser
+   tsx_scanner)
   (flags
    -std=c99
    -fPIC
@@ -22,4 +30,5 @@
    tree_sitter/alloc.h
    tree_sitter/api.h
    tree_sitter/array.h
-   tree_sitter/parser.h)))
+   tree_sitter/parser.h
+   tree_sitter_typescript/scanner.h)))
