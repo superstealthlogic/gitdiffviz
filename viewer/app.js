@@ -236,6 +236,32 @@ const languageKeywords = {
     "extension", "false", "for", "func", "guard", "if", "import", "in", "init",
     "let", "nil", "private", "protocol", "public", "return", "self", "static",
     "struct", "switch", "throw", "throws", "true", "typealias", "var", "while"
+  ],
+  python: [
+    "and", "as", "assert", "async", "await", "break", "class", "continue", "def",
+    "del", "elif", "else", "except", "False", "finally", "for", "from", "global",
+    "if", "import", "in", "is", "lambda", "match", "None", "nonlocal", "not",
+    "or", "pass", "raise", "return", "self", "True", "try", "while", "with",
+    "yield"
+  ],
+  typescript: [
+    "abstract", "any", "as", "async", "await", "boolean", "break", "case",
+    "catch", "class", "const", "constructor", "continue", "declare", "default",
+    "delete", "do", "else", "enum", "export", "extends", "false", "finally",
+    "for", "from", "function", "get", "if", "implements", "import", "in",
+    "instanceof", "interface", "keyof", "let", "namespace", "new", "null",
+    "number", "of", "private", "protected", "public", "readonly", "return",
+    "satisfies", "set", "static", "string", "super", "switch", "this", "throw",
+    "true", "try", "type", "typeof", "undefined", "unknown", "var", "void",
+    "while", "yield"
+  ],
+  javascript: [
+    "async", "await", "break", "case", "catch", "class", "const", "continue",
+    "default", "delete", "do", "else", "export", "extends", "false", "finally",
+    "for", "from", "function", "get", "if", "import", "in", "instanceof", "let",
+    "new", "null", "of", "return", "set", "static", "super", "switch", "this",
+    "throw", "true", "try", "typeof", "undefined", "var", "void", "while",
+    "yield"
   ]
 };
 

@@ -609,7 +609,20 @@ let test_language_detection () =
   Alcotest.(check string) "cpp" "cpp" (Language.detect_by_path "src/widget.cpp");
   Alcotest.(check string) "c" "c" (Language.detect_by_path "src/widget.c");
   Alcotest.(check string) "swift" "swift"
-    (Language.detect_by_path "Sources/App.swift")
+    (Language.detect_by_path "Sources/App.swift");
+  Alcotest.(check string) "python" "python" (Language.detect_by_path "app/main.py");
+  Alcotest.(check string) "python stub" "python"
+    (Language.detect_by_path "app/main.pyi");
+  Alcotest.(check string) "typescript" "typescript"
+    (Language.detect_by_path "src/store.ts");
+  Alcotest.(check string) "tsx" "typescript"
+    (Language.detect_by_path "src/Panel.tsx");
+  Alcotest.(check string) "javascript" "javascript"
+    (Language.detect_by_path "src/store.js");
+  Alcotest.(check string) "jsx" "javascript"
+    (Language.detect_by_path "src/Panel.jsx");
+  Alcotest.(check string) "esm" "javascript"
+    (Language.detect_by_path "src/store.mjs")
 
 let test_parser_registry_dispatch () =
   let check_file expected_language expected_symbol_count path source =
@@ -624,7 +637,10 @@ let test_parser_registry_dispatch () =
   in
   check_file "rust" 1 "src/lib.rs" "pub fn main() {}\n";
   check_file "cpp" 1 "src/widget.cpp" "class Widget {};\n";
-  check_file "swift" 1 "Sources/App.swift" "struct Widget {}\n"
+  check_file "swift" 1 "Sources/App.swift" "struct Widget {}\n";
+  check_file "python" 1 "app/main.py" "def main():\n    pass\n";
+  check_file "typescript" 1 "src/store.ts" "export class Store {}\n";
+  check_file "javascript" 1 "src/store.js" "export function make() {}\n"
 
 let symbol_by_language_kind language_kind symbols =
   List.find
@@ -758,6 +774,257 @@ let test_swift_symbol_extraction () =
       Alcotest.(check string) "method parent" struct_symbol.id
         (Option.value method_symbol.parent_symbol_id ~default:"")
 
+let read_fixture name =
+  let path = test_fixture_path name in
+  let channel = open_in_bin path in
+  Fun.protect
+    ~finally:(fun () -> close_in_noerr channel)
+    (fun () -> really_input_string channel (in_channel_length channel))
+
+let extract_fixture extract name =
+  match extract ~repo_root:"test/fixtures" ~path:name ~source:(read_fixture name) with
+  | Error message -> Alcotest.fail message
+  | Ok symbols -> symbols
+
+let child_of (parent : Semantic_types.semantic_symbol) symbols =
+  List.filter
+    (fun (symbol : Semantic_types.semantic_symbol) ->
+      symbol.parent_symbol_id = Some parent.id)
+    symbols
+
+let test_python_symbol_extraction () =
+  let symbols = extract_fixture Python_symbols.extract "sample.py" in
+  let constant = symbol_by_language_kind "constant" symbols in
+  Alcotest.(check string) "module constant" "MAX_WIDGETS" constant.name;
+  Alcotest.(check bool) "lowercase module binding is not a symbol" false
+    (List.exists
+       (fun (symbol : Semantic_types.semantic_symbol) ->
+         String.equal symbol.name "default_label")
+       symbols);
+  let alias = symbol_by_language_kind "type_alias" symbols in
+  Alcotest.(check string) "type alias" "WidgetId" alias.name;
+  let widget = symbol_by_language_kind_and_name "class" "Widget" symbols in
+  Alcotest.(check (list string)) "dataclass pattern" [ "dataclass" ]
+    widget.semantic.patterns;
+  (* The decorator line belongs to the class it decorates. *)
+  Alcotest.(check int) "decorated class span starts at decorator" 13
+    widget.span.start_line;
+  let members =
+    child_of widget symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) ->
+           Option.value symbol.language_kind ~default:"")
+  in
+  Alcotest.(check (list string)) "dataclass members"
+    [ "attribute"; "attribute"; "property"; "property"; "static_method"; "class_method" ]
+    members;
+  let store = symbol_by_language_kind_and_name "class" "Store" symbols in
+  Alcotest.(check (list string)) "ABC base is abstract" [ "abstract" ]
+    store.semantic.patterns;
+  let fetch = symbol_by_language_kind_and_name "method" "fetch" symbols in
+  Alcotest.(check (list string)) "async method" [ "async" ]
+    fetch.semantic.patterns;
+  let persist = symbol_by_language_kind_and_name "method" "persist" symbols in
+  Alcotest.(check (list string)) "abstractmethod" [ "abstract" ]
+    persist.semantic.patterns;
+  let build = symbol_by_language_kind_and_name "function" "build" symbols in
+  let nested = symbol_by_language_kind_and_name "function" "normalize" symbols in
+  Alcotest.(check string) "nested function parent" build.id
+    (Option.value nested.parent_symbol_id ~default:"");
+  let identity = symbol_by_language_kind_and_name "function" "identity" symbols in
+  Alcotest.(check (list string)) "PEP 695 generic" [ "generic" ]
+    identity.semantic.patterns;
+  let test_class = symbol_by_language_kind "test_class" symbols in
+  Alcotest.(check string) "test class" "TestWidget" test_class.name;
+  let test_method = symbol_by_language_kind "test_method" symbols in
+  Alcotest.(check (list string)) "test method paradigms" [ "test" ]
+    test_method.semantic.paradigms;
+  let test_function = symbol_by_language_kind "test_function" symbols in
+  Alcotest.(check string) "pytest function" "test_build" test_function.name
+
+let test_typescript_symbol_extraction () =
+  let symbols = extract_fixture Typescript_symbols.extract "sample.ts" in
+  let interface = symbol_by_language_kind "interface" symbols in
+  Alcotest.(check string) "interface" "Widget" interface.name;
+  let members =
+    child_of interface symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name)
+  in
+  Alcotest.(check (list string)) "interface members" [ "id"; "width"; "resize" ]
+    members;
+  let enum = symbol_by_language_kind "enum" symbols in
+  Alcotest.(check string) "enum" "Mode" enum.name;
+  let base = symbol_by_language_kind "abstract_class" symbols in
+  Alcotest.(check (list string)) "abstract generic class"
+    [ "abstract"; "generic" ] base.semantic.patterns;
+  let getter = symbol_by_language_kind "getter" symbols in
+  Alcotest.(check string) "getter" "size" getter.name;
+  let setter = symbol_by_language_kind "setter" symbols in
+  Alcotest.(check string) "setter" "label_" setter.name;
+  let constructor = symbol_by_language_kind "constructor" symbols in
+  Alcotest.(check string) "constructor" "constructor" constructor.name;
+  let store = symbol_by_language_kind_and_name "class" "Store" symbols in
+  let empty = symbol_by_language_kind_and_name "field" "empty" symbols in
+  Alcotest.(check string) "static field parent" store.id
+    (Option.value empty.parent_symbol_id ~default:"");
+  Alcotest.(check (list string)) "static modifier" [ "static" ]
+    empty.semantic.patterns;
+  (* An arrow-function class field is a method in everything but syntax. *)
+  let describe = symbol_by_language_kind_and_name "method" "describe" symbols in
+  Alcotest.(check string) "arrow field method kind" "function"
+    (Semantic_types.semantic_symbol_kind_to_string describe.kind);
+  let arrow = symbol_by_language_kind "arrow_function" symbols in
+  Alcotest.(check string) "exported arrow" "resize" arrow.name;
+  (* `export const` spans from the `export` keyword, not the declarator. *)
+  Alcotest.(check int) "arrow span starts at export" 69 arrow.span.start_line;
+  let generator = symbol_by_language_kind "generator_function" symbols in
+  Alcotest.(check string) "generator" "widgets" generator.name;
+  let signature = symbol_by_language_kind "function_signature" symbols in
+  Alcotest.(check string) "ambient signature" "ambientBuild" signature.name;
+  let namespace = symbol_by_language_kind "namespace" symbols in
+  Alcotest.(check string) "namespace" "Widgets" namespace.name;
+  let unit = symbol_by_language_kind_and_name "function" "unit" symbols in
+  Alcotest.(check string) "namespace member parent" namespace.id
+    (Option.value unit.parent_symbol_id ~default:"")
+
+let test_tsx_symbol_extraction () =
+  let symbols = extract_fixture Typescript_symbols.extract "sample.tsx" in
+  let panel = symbol_by_language_kind_and_name "component" "Panel" symbols in
+  Alcotest.(check (list string)) "component pattern" [ "react_component" ]
+    panel.semantic.patterns;
+  Alcotest.(check (list string)) "component paradigm" [ "react" ]
+    panel.semantic.paradigms;
+  let list_component =
+    symbol_by_language_kind_and_name "component" "WidgetList" symbols
+  in
+  Alcotest.(check string) "arrow component" "WidgetList" list_component.name;
+  (* Inline prop types sit in type position; they are not component members. *)
+  Alcotest.(check (list string)) "arrow component has no members" []
+    (child_of list_component symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name));
+  let legend = symbol_by_language_kind_and_name "class" "Legend" symbols in
+  Alcotest.(check (list string)) "heritage type members are skipped" [ "render" ]
+    (child_of legend symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name));
+  let props = symbol_by_language_kind "interface" symbols in
+  Alcotest.(check (list string)) "interface members are kept"
+    [ "title"; "widgets" ]
+    (child_of props symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name))
+
+let test_javascript_test_block_extraction () =
+  let symbols = extract_fixture Typescript_symbols.extract "sample.test.js" in
+  let suite = symbol_by_language_kind_and_name "test_suite" "build" symbols in
+  Alcotest.(check string) "suite kind" "type_container"
+    (Semantic_types.semantic_symbol_kind_to_string suite.kind);
+  Alcotest.(check (list string)) "suite tagged as test" [ "test" ]
+    suite.semantic.patterns;
+  let cases =
+    child_of suite symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name)
+  in
+  Alcotest.(check (list string)) "suite children"
+    [ "normalizes the id"; "keeps the base width"; "resize" ]
+    cases;
+  let nested = symbol_by_language_kind_and_name "test_suite" "resize" symbols in
+  Alcotest.(check (list string)) "it.each case is nested" [ "applies %i" ]
+    (child_of nested symbols
+    |> List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name));
+  let exported = symbol_by_language_kind_and_name "function" "makeWidget" symbols in
+  Alcotest.(check bool) "plain function is not tagged as test" false
+    (List.mem "test" exported.semantic.patterns)
+
+(* Both cases below were found by running the adapters over a corpus of real
+   CPython and npm sources. *)
+let test_python_soft_keyword_type_assignment () =
+  (* `type` is a soft keyword: `type(x).attr = v` also parses as a
+     type_alias_statement whose left-hand side is not a name. *)
+  let source =
+    "def patch(item):\n\
+    \    type(item).__getitem__ = lambda self, key: None\n\n\
+     type Alias[T] = list[T]\n"
+  in
+  match
+    Python_symbols.extract ~repo_root:"/repo" ~path:"patch.py" ~source
+  with
+  | Error message -> Alcotest.fail message
+  | Ok symbols ->
+      Alcotest.(check (list (pair string string)))
+        "only the real alias is a symbol"
+        [ ("function", "patch"); ("type_alias", "Alias") ]
+        (List.map
+           (fun (symbol : Semantic_types.semantic_symbol) ->
+             (Option.value symbol.language_kind ~default:"", symbol.name))
+           symbols)
+
+let test_typescript_computed_member_name () =
+  (* Downlevelled TypeScript output puts whole initializer chains into a
+     computed key; that is not a member name. *)
+  let source =
+    "class Runner {\n\
+    \  [(_a = new WeakMap(), _b = new WeakMap(), _c = new WeakSet(), \
+     Symbol.asyncIterator)]() {}\n\
+    \  ['ok']() {}\n\
+     }\n"
+  in
+  match
+    Typescript_symbols.extract ~repo_root:"/repo" ~path:"runner.js" ~source
+  with
+  | Error message -> Alcotest.fail message
+  | Ok symbols ->
+      Alcotest.(check (list string)) "implausible computed key is dropped"
+        [ "Runner"; "ok" ]
+        (List.map
+           (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name)
+           symbols)
+
+let test_typescript_dialect_selection () =
+  (* `<T>expr` only parses in the typescript dialect; JSX only in tsx. *)
+  let assertion_source =
+    "export function coerce(value: unknown): string {\n\
+    \  const text = <string>value;\n\
+    \  return text.trim();\n\
+     }\n"
+  in
+  let jsx_source =
+    "export function Badge({ label }) {\n\
+    \  return <span>{label}</span>;\n\
+     }\n"
+  in
+  let names source path =
+    match
+      Typescript_symbols.extract ~repo_root:"/repo" ~path ~source
+    with
+    | Error message -> Alcotest.fail message
+    | Ok symbols ->
+        List.map
+          (fun (symbol : Semantic_types.semantic_symbol) ->
+            (symbol.name, Option.value symbol.language_kind ~default:""))
+          symbols
+  in
+  Alcotest.(check (list (pair string string)))
+    "type assertion in .ts"
+    [ ("coerce", "function") ]
+    (names assertion_source "src/coerce.ts");
+  Alcotest.(check (list (pair string string)))
+    "jsx in .js"
+    [ ("Badge", "component") ]
+    (names jsx_source "src/Badge.js");
+  Alcotest.(check (list (pair string string)))
+    "jsx in .jsx"
+    [ ("Badge", "component") ]
+    (names jsx_source "src/Badge.jsx")
+
+let snapshot_fixtures =
+  [
+    "sample.rs";
+    "sample.cpp";
+    "Sample.swift";
+    "sample.py";
+    "sample.ts";
+    "sample.tsx";
+    "sample.test.js";
+  ]
+
 let test_semantic_extract_with_adapter_symbols () =
   let rust = test_fixture_path "sample.rs" in
   let cpp = test_fixture_path "sample.cpp" in
@@ -805,13 +1072,9 @@ let test_semantic_extract_with_adapter_symbols () =
         (List.length swift_file.symbols > 0)
 
 let test_semantic_extract_golden_snapshot () =
-  let rust = test_fixture_path "sample.rs" in
-  let cpp = test_fixture_path "sample.cpp" in
-  let swift = test_fixture_path "Sample.swift" in
-  let repo_root = Filename.dirname rust in
+  let repo_root = Filename.dirname (test_fixture_path "sample.rs") in
   match
-    ( Semantic_extract.extract ~repo_root
-        ~files:[ Filename.basename rust; Filename.basename cpp; Filename.basename swift ],
+    ( Semantic_extract.extract ~repo_root ~files:snapshot_fixtures,
       Json_codec.read_json_file (snapshot_path "semantic-extraction.json") )
   with
   | Error message, _ | _, Error message -> Alcotest.fail message
@@ -863,6 +1126,20 @@ let () =
             test_cpp_symbol_extraction;
           Alcotest.test_case "swift symbol extraction" `Quick
             test_swift_symbol_extraction;
+          Alcotest.test_case "python symbol extraction" `Quick
+            test_python_symbol_extraction;
+          Alcotest.test_case "typescript symbol extraction" `Quick
+            test_typescript_symbol_extraction;
+          Alcotest.test_case "tsx symbol extraction" `Quick
+            test_tsx_symbol_extraction;
+          Alcotest.test_case "javascript test block extraction" `Quick
+            test_javascript_test_block_extraction;
+          Alcotest.test_case "typescript dialect selection" `Quick
+            test_typescript_dialect_selection;
+          Alcotest.test_case "python soft keyword type assignment" `Quick
+            test_python_soft_keyword_type_assignment;
+          Alcotest.test_case "typescript computed member name" `Quick
+            test_typescript_computed_member_name;
           Alcotest.test_case "semantic extract with adapter symbols" `Quick
             test_semantic_extract_with_adapter_symbols;
           Alcotest.test_case "semantic extract golden snapshot" `Quick
