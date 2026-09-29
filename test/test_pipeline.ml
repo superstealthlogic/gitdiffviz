@@ -604,12 +604,47 @@ let test_build_timeline_semantic_symbols_for_rust_c_cpp () =
       Alcotest.(check bool) "c added function" true
         (scene_has_changed_symbol "c_extra" step.document)
 
+let test_build_timeline_semantic_symbols_for_go () =
+  let dir =
+    Filename.concat (Filename.get_temp_dir_name ())
+      ("gvd-timeline-go-test-" ^ string_of_int (Unix.getpid ()))
+  in
+  Unix.mkdir dir 0o700;
+  run dir [ "init" ];
+  run dir [ "config"; "user.email"; "test@example.invalid" ];
+  run dir [ "config"; "user.name"; "Git Visualization Diff Test" ];
+  run dir [ "config"; "commit.gpgsign"; "false" ];
+  write_file (Filename.concat dir "widget.go")
+    "package widget\n\n\
+     type Widget struct {\n\tWidth int\n}\n\n\
+     func (w *Widget) Resize(width int) {\n\tw.Width = width\n}\n";
+  run dir [ "add"; "widget.go" ];
+  run dir [ "commit"; "-m"; "base" ];
+  write_file (Filename.concat dir "widget.go")
+    "package widget\n\n\
+     type Widget struct {\n\tWidth int\n\tHeight int\n}\n\n\
+     func (w *Widget) Resize(width int) {\n\tw.Width = width * 2\n}\n\n\
+     func NewWidget() *Widget {\n\treturn &Widget{}\n}\n";
+  run dir [ "add"; "widget.go" ];
+  run dir [ "commit"; "-m"; "target" ];
+  match Timeline.build ~repo_root:dir ~base:"HEAD~1" ~target:"HEAD" ~path_filter:None with
+  | Error message -> Alcotest.fail message
+  | Ok timeline ->
+      let step = List.hd timeline.Scene_types.steps in
+      Alcotest.(check bool) "go added field" true
+        (scene_has_changed_symbol "Height" step.document);
+      Alcotest.(check bool) "go added constructor" true
+        (scene_has_changed_symbol "NewWidget" step.document);
+      Alcotest.(check bool) "go changed method keeps its receiver name" true
+        (scene_has_changed_symbol "Widget.Resize" step.document)
+
 let test_language_detection () =
   Alcotest.(check string) "rust" "rust" (Language.detect_by_path "src/lib.rs");
   Alcotest.(check string) "cpp" "cpp" (Language.detect_by_path "src/widget.cpp");
   Alcotest.(check string) "c" "c" (Language.detect_by_path "src/widget.c");
   Alcotest.(check string) "swift" "swift"
     (Language.detect_by_path "Sources/App.swift");
+  Alcotest.(check string) "go" "go" (Language.detect_by_path "cmd/server/main.go");
   Alcotest.(check string) "python" "python" (Language.detect_by_path "app/main.py");
   Alcotest.(check string) "python stub" "python"
     (Language.detect_by_path "app/main.pyi");
@@ -638,6 +673,7 @@ let test_parser_registry_dispatch () =
   check_file "rust" 1 "src/lib.rs" "pub fn main() {}\n";
   check_file "cpp" 1 "src/widget.cpp" "class Widget {};\n";
   check_file "swift" 1 "Sources/App.swift" "struct Widget {}\n";
+  check_file "go" 1 "cmd/server/main.go" "package main\n\nfunc main() {}\n";
   check_file "python" 1 "app/main.py" "def main():\n    pass\n";
   check_file "typescript" 1 "src/store.ts" "export class Store {}\n";
   check_file "javascript" 1 "src/store.js" "export function make() {}\n"
@@ -933,6 +969,118 @@ let test_javascript_test_block_extraction () =
   Alcotest.(check bool) "plain function is not tagged as test" false
     (List.mem "test" exported.semantic.patterns)
 
+let names_of symbols =
+  List.map (fun (symbol : Semantic_types.semantic_symbol) -> symbol.name) symbols
+
+let test_go_symbol_extraction () =
+  let symbols = extract_fixture Go_symbols.extract "sample.go" in
+  (* Go has no `impl` block, so the receiver is what ties a method to its type.
+     Without that edge a Go file reads as a flat list of functions. *)
+  let widget = symbol_by_language_kind_and_name "struct" "Widget" symbols in
+  Alcotest.(check (list string)) "methods and fields hang off the receiver type"
+    [
+      "Base"; "Mutex"; "Width"; "Height"; "mode"; "Widget.String";
+      "Widget.Resize"; "Widget.Area"; "Widget.MarshalJSON";
+    ]
+    (names_of (child_of widget symbols));
+  let embedded =
+    symbol_by_language_kind_and_name "embedded_field" "Mutex" symbols
+  in
+  Alcotest.(check (list string)) "embedding is Go's composition"
+    [ "embedding"; "exported" ] embedded.semantic.patterns;
+  let stringer = symbol_by_language_kind_and_name "method" "Widget.String" symbols in
+  Alcotest.(check (list string)) "String means fmt.Stringer"
+    [ "stringer"; "pointer_receiver"; "exported" ] stringer.semantic.patterns;
+  let area = symbol_by_language_kind_and_name "method" "Widget.Area" symbols in
+  Alcotest.(check (list string)) "value receiver" [ "value_receiver"; "exported" ]
+    area.semantic.patterns;
+  (* `type Mode int` plus a const block over iota is how Go spells an enum. *)
+  let mode = symbol_by_language_kind_and_name "type" "Mode" symbols in
+  Alcotest.(check (list string)) "iota block makes the type an enum"
+    [ "enum"; "exported" ] mode.semantic.patterns;
+  Alcotest.(check (list string)) "enum members"
+    [ "ModeIdle"; "ModeBusy"; "ModeClosed" ]
+    (names_of (child_of mode symbols));
+  let generic_store = symbol_by_language_kind_and_name "struct" "Store" symbols in
+  Alcotest.(check (list string)) "type parameters" [ "generic"; "exported" ]
+    generic_store.semantic.patterns;
+  Alcotest.(check (list string)) "generic receiver still resolves"
+    [ "items"; "mu"; "Store.Add" ]
+    (names_of (child_of generic_store symbols));
+  let displayable =
+    symbol_by_language_kind_and_name "interface" "Displayable" symbols
+  in
+  Alcotest.(check (list string)) "interface members"
+    [ "Stringer"; "Display"; "Bounds" ]
+    (names_of (child_of displayable symbols));
+  let constructor = symbol_by_language_kind_and_name "function" "NewWidget" symbols in
+  Alcotest.(check (list string)) "New* is Go's constructor idiom"
+    [ "constructor"; "exported" ] constructor.semantic.patterns;
+  let fan = symbol_by_language_kind_and_name "function" "Fan" symbols in
+  Alcotest.(check (list string)) "concurrency is visible"
+    [ "goroutine"; "select"; "channel"; "exported" ] fan.semantic.patterns;
+  Alcotest.(check (list string)) "concurrent paradigm" [ "concurrent" ]
+    fan.semantic.paradigms;
+  let sentinel = symbol_by_language_kind_and_name "variable" "ErrMissing" symbols in
+  Alcotest.(check (list string)) "sentinel error"
+    [ "sentinel_error"; "exported" ] sentinel.semantic.patterns;
+  let alias = symbol_by_language_kind "type_alias" symbols in
+  Alcotest.(check string) "type alias" "Renderer" alias.name;
+  let func_type = symbol_by_language_kind "func_type" symbols in
+  Alcotest.(check string) "declared function type" "Transform" func_type.name;
+  Alcotest.(check bool) "unexported names are not tagged exported" false
+    (List.mem "exported"
+       (symbol_by_language_kind_and_name "function" "normalize" symbols)
+         .semantic.patterns);
+  (* A Go doc comment is part of the declaration it documents. *)
+  Alcotest.(check int) "doc comment belongs to the declaration" 68
+    constructor.span.start_line;
+  let init = symbol_by_language_kind "init_function" symbols in
+  Alcotest.(check string) "init" "init" init.name
+
+let test_go_test_file_extraction () =
+  let symbols = extract_fixture Go_symbols.extract "sample_test.go" in
+  let resize = symbol_by_language_kind "test_function" symbols in
+  Alcotest.(check string) "test function" "TestResize" resize.name;
+  (* A table-driven test fails in a subtest, so subtests are the useful unit. *)
+  Alcotest.(check (list string)) "t.Run subtests are nested cases"
+    [ "rejects negative width"; "stores the new size" ]
+    (names_of (child_of resize symbols));
+  let benchmark = symbol_by_language_kind "benchmark_function" symbols in
+  Alcotest.(check string) "benchmark" "BenchmarkResize" benchmark.name;
+  let fuzz = symbol_by_language_kind "fuzz_function" symbols in
+  Alcotest.(check string) "fuzz target" "FuzzNormalize" fuzz.name;
+  let example = symbol_by_language_kind "example_function" symbols in
+  Alcotest.(check string) "example" "ExampleNewWidget" example.name;
+  let helper = symbol_by_language_kind_and_name "function" "helper" symbols in
+  Alcotest.(check bool) "a plain helper in a test file is not a test" false
+    (List.mem "test" helper.semantic.patterns)
+
+(* Test-shaped names outside a _test.go file are ordinary functions unless they
+   carry the signature `go test` requires. *)
+let test_go_test_detection_outside_test_file () =
+  let source =
+    "package widget\n\n\
+     import \"testing\"\n\n\
+     func TestHarness(t *testing.T) {}\n\n\
+     func Testing() {}\n\n\
+     func TestSuite() {}\n"
+  in
+  match Go_symbols.extract ~repo_root:"/repo" ~path:"widget/harness.go" ~source with
+  | Error message -> Alcotest.fail message
+  | Ok symbols ->
+      Alcotest.(check (list (pair string string)))
+        "only the testing.T signature makes a test"
+        [
+          ("test_function", "TestHarness");
+          ("function", "Testing");
+          ("function", "TestSuite");
+        ]
+        (List.map
+           (fun (symbol : Semantic_types.semantic_symbol) ->
+             (Option.value symbol.language_kind ~default:"", symbol.name))
+           symbols)
+
 (* Both cases below were found by running the adapters over a corpus of real
    CPython and npm sources. *)
 let test_python_soft_keyword_type_assignment () =
@@ -1019,6 +1167,8 @@ let snapshot_fixtures =
     "sample.rs";
     "sample.cpp";
     "Sample.swift";
+    "sample.go";
+    "sample_test.go";
     "sample.py";
     "sample.ts";
     "sample.tsx";
@@ -1114,6 +1264,8 @@ let () =
             test_build_timeline_smoke;
           Alcotest.test_case "build timeline semantic symbols for rust/c/cpp"
             `Quick test_build_timeline_semantic_symbols_for_rust_c_cpp;
+          Alcotest.test_case "build timeline semantic symbols for go" `Quick
+            test_build_timeline_semantic_symbols_for_go;
         ] );
       ( "adapters",
         [
@@ -1126,6 +1278,12 @@ let () =
             test_cpp_symbol_extraction;
           Alcotest.test_case "swift symbol extraction" `Quick
             test_swift_symbol_extraction;
+          Alcotest.test_case "go symbol extraction" `Quick
+            test_go_symbol_extraction;
+          Alcotest.test_case "go test file extraction" `Quick
+            test_go_test_file_extraction;
+          Alcotest.test_case "go test detection outside a test file" `Quick
+            test_go_test_detection_outside_test_file;
           Alcotest.test_case "python symbol extraction" `Quick
             test_python_symbol_extraction;
           Alcotest.test_case "typescript symbol extraction" `Quick

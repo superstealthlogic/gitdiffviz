@@ -13,6 +13,7 @@ let detect_by_path path =
   | ".ts" | ".tsx" | ".mts" | ".cts" -> "typescript"
   | ".js" | ".jsx" | ".mjs" | ".cjs" -> "javascript"
   | ".swift" -> "swift"
+  | ".go" -> "go"
   | ".py" | ".pyi" -> "python"
   | ".mojo" -> "mojo"
   | ".md" -> "markdown"

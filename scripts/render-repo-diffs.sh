@@ -113,7 +113,7 @@ echo "Collecting semantic files..."
   cd "$repo"
   # Keep in sync with Parser_registry.supports_path.
   git diff --name-only --diff-filter=ACMRT "$base" "$target" \
-    | grep -E '\.(rs|swift|c|h|cc|cpp|cxx|hh|hpp|py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs)$' \
+    | grep -E '\.(rs|swift|go|c|h|cc|cpp|cxx|hh|hpp|py|pyi|ts|tsx|mts|cts|js|jsx|mjs|cjs)$' \
     > "$semantic_files" || true
 )
 

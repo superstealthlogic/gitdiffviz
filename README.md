@@ -118,9 +118,10 @@ Current status:
 - C/C++ semantic extraction is tree-sitter-backed for basic syntax-level symbols.
 - Swift semantic extraction is tree-sitter-backed for basic syntax-level symbols.
 - Python semantic extraction is tree-sitter-backed for basic syntax-level symbols.
+- Go semantic extraction is tree-sitter-backed, and reattaches methods and iota constants to the type they belong to.
 - TypeScript and JavaScript semantic extraction is tree-sitter-backed for basic syntax-level symbols, including JSX.
 - Adapter output now shares common symbol ID, span, sort, and generic metadata helpers.
-- Semantic extraction has a golden JSON snapshot covering Rust, C/C++, Swift, Python, TypeScript, TSX, and JavaScript fixtures.
+- Semantic extraction has a golden JSON snapshot covering Rust, C/C++, Swift, Go, Python, TypeScript, TSX, and JavaScript fixtures.
 - Semantic joins use precise hunk-line overlap when available, including deletion-only projection into current-file symbol spans.
 - Semantic joins preserve symbol nodes for deleted files and can attach semantic input from a renamed file's old path to the current file node.
 - A JS/SVG viewer can load OCaml scene JSON through `/scene.json`; diff rows use Highlight.js when available, with a lightweight fallback highlighter.
@@ -174,6 +175,45 @@ only touches `@app.route(...)` still maps to the handler it decorates.
 
 The Python grammar is vendored from `tree-sitter-python` under
 `vendor/tree-sitter-python`.
+
+Go extraction currently recognizes:
+
+- `struct`, `interface`, defined types (`type Mode int`), declared function
+  types, and `type` aliases
+- struct fields and interface methods, nested under the type that declares them
+- embedded fields and embedded interfaces, tagged `embedding` with a
+  `composition` paradigm, which is how Go spells inheritance
+- functions and methods, with `init` as a distinct kind and `main` in package
+  `main` tagged `entrypoint`
+- file-level constants and variables, with `Err*` bindings tagged
+  `sentinel_error`
+- type parameters, tagged `generic`; an interface whose elements are a type
+  union is tagged `constraint` rather than treated as behavioural
+- goroutines, channels, and `select`, tagged with a `concurrent` paradigm
+- `New*` constructors, and method names that imply a standard-library
+  interface: `String`, `Error`, `ServeHTTP`, `MarshalJSON`, `UnmarshalJSON`,
+  and `Close`
+- `TestXxx`, `BenchmarkXxx`, `FuzzXxx`, and `ExampleXxx` in `_test.go` files,
+  plus `t.Run("name", ...)` subtests nested under the test that declares them
+- exported identifiers, tagged `exported`, since changing one is an
+  API-visible change
+
+Go has no `impl` block, so two edges are resolved after the file is walked
+rather than lexically: a method is attached to its receiver's type, and the
+constants of an `iota` block are attached to the type that names them, which
+also marks that type an `enum`. Both only apply when the type is declared
+earlier in the same file; a receiver declared in another file leaves the method
+at file level, where it is still named `Widget.Resize` the way `go doc` names
+it. Over the Go 1.26 standard library (6,494 files) that attaches 79% of
+methods, and 1% of the remainder are lost to the ordering rule.
+
+A Go doc comment is part of the declaration it documents, so a declaration's
+span starts at its doc comment: a diff that only rewrites the doc still maps to
+the symbol.
+
+The Go grammar is vendored from `tree-sitter-go` v0.23.4 under
+`vendor/tree-sitter-go`. It has no external scanner, and its generated parser
+is ABI 14, so it works with the pinned 0.22.6 runtime.
 
 TypeScript and JavaScript extraction currently recognizes:
 
@@ -237,7 +277,7 @@ Extract semantic input for recognized files:
 ```bash
 opam exec -- dune exec git-visualization-diff -- extract-semantics \
   --repo . \
-  src/lib.rs src/widget.cpp Sources/App.swift \
+  src/lib.rs src/widget.cpp Sources/App.swift internal/widget/widget.go \
   --out /tmp/semantics.json
 ```
 
