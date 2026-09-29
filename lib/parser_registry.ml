@@ -5,6 +5,7 @@ let extractor_for_language = function
   | "c" | "cpp" -> Some (module Cpp_symbols : Symbol_extractor_intf.S)
   | "swift" -> Some (module Swift_symbols : Symbol_extractor_intf.S)
   | "python" -> Some (module Python_symbols : Symbol_extractor_intf.S)
+  | "go" -> Some (module Go_symbols : Symbol_extractor_intf.S)
   | "typescript" | "javascript" ->
       Some (module Typescript_symbols : Symbol_extractor_intf.S)
   | _ -> None

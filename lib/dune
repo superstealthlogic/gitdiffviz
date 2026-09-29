@@ -21,7 +21,9 @@
    typescript_parser
    typescript_scanner
    tsx_parser
-   tsx_scanner)
+   tsx_scanner
+   go_tree_sitter_bindings
+   go_parser)
   (flags
    -std=c99
    -fPIC

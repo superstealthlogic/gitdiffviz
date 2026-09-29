@@ -162,6 +162,7 @@ function languageForHighlightJs(language) {
     case "typescript": return "typescript";
     case "javascript": return "javascript";
     case "python": return "python";
+    case "go": return "go";
     case "json": return "json";
     case "ocaml": return "ocaml";
     case "markdown": return "markdown";
@@ -243,6 +244,12 @@ const languageKeywords = {
     "if", "import", "in", "is", "lambda", "match", "None", "nonlocal", "not",
     "or", "pass", "raise", "return", "self", "True", "try", "while", "with",
     "yield"
+  ],
+  go: [
+    "break", "case", "chan", "const", "continue", "default", "defer", "else",
+    "fallthrough", "false", "for", "func", "go", "goto", "if", "import",
+    "interface", "iota", "map", "nil", "package", "range", "return", "select",
+    "struct", "switch", "true", "type", "var"
   ],
   typescript: [
     "abstract", "any", "as", "async", "await", "boolean", "break", "case",

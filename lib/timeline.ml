@@ -1,10 +1,5 @@
 open Scene_types
 
-let recognized_semantic_path path =
-  match Language.detect_by_path path with
-  | "c" | "cpp" | "rust" | "swift" -> true
-  | _ -> false
-
 let run_git_capture repo_root args =
   let old = Sys.getcwd () in
   Fun.protect
@@ -82,7 +77,7 @@ let git_show_file ~repo_root ~commit ~path =
   run_git_capture repo_root [ "show"; commit ^ ":" ^ path ]
 
 let semantic_file_at_commit ~repo_root ~commit ~path =
-  if not (recognized_semantic_path path) then Ok None
+  if not (Parser_registry.supports_path path) then Ok None
   else
     match git_show_file ~repo_root ~commit ~path with
     | Error _ -> Ok None
